@@ -83,6 +83,7 @@ def verify_telegram_init_data(init_data_str: str) -> TelegramUser:
         print(f"🔒 [TG AUTH] Verification failed!")
         masked_token = f"{BOT_TOKEN[:5]}...{BOT_TOKEN[-5:]}" if len(BOT_TOKEN) > 10 else BOT_TOKEN
         print(f"   BOT_TOKEN: {masked_token}")
+        print(f"   Raw initData: {init_data_str}")
         print(f"   computed_hash: {computed_hash}")
         print(f"   received hash (tg_hash): {tg_hash}")
         print(f"   data_check_string:\n{data_check_string}")
