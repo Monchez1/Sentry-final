@@ -14,5 +14,8 @@ services:
         sync: false          # Paste your Vercel frontend URL here e.g. https://sentry-final.vercel.app
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+      - key: PUSH_SECRET
+        sync: false          # Shared secret for rotator state push endpoint
       - key: PYTHON_VERSION
         value: 3.11.0
+

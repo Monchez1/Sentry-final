@@ -15,6 +15,7 @@ from routers.activity_logs import router as activity_router
 from routers.rotation_monitor import router as rotation_router
 from routers.trade_history import router as trade_router
 from routers.notification_settings import router as notification_router
+from routers.rotator_push import router as rotator_push_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="SENTRY Backend")
@@ -46,6 +47,12 @@ def portfolio():
 
 @app.get("/signals")
 def signals():
+    # Try DB first (Render deployment)
+    snap = load_rotator_snapshot()
+    if snap and snap.get("signals"):
+        return snap["signals"]
+
+    # Fallback to local file (dev / same-machine deployment)
     import json
     from pathlib import Path
     signals_file = Path("/home/kenyatta/sentry/runtime/pending_signals.json")
@@ -55,31 +62,12 @@ def signals():
                 return json.load(f)
         except Exception as e:
             print(f"Error loading pending signals: {e}")
+
+    # Last resort: static demo data
     return [
-        {
-            "symbol": "ADAUSDT",
-            "side": "LONG",
-            "score": 0.89,
-            "rank": 1,
-            "st": 0.82,
-            "mom": 0.19
-        },
-        {
-            "symbol": "AVAXUSDT",
-            "side": "LONG",
-            "score": 0.81,
-            "rank": 2,
-            "st": 0.76,
-            "mom": 0.14
-        },
-        {
-            "symbol": "NEARUSDT",
-            "side": "SHORT",
-            "score": 0.72,
-            "rank": 3,
-            "st": -0.68,
-            "mom": -0.11
-        }
+        {"symbol": "ADAUSDT", "side": "LONG",  "score": 0.89, "rank": 1, "st": 0.82,  "mom": 0.19},
+        {"symbol": "AVAXUSDT","side": "LONG",  "score": 0.81, "rank": 2, "st": 0.76,  "mom": 0.14},
+        {"symbol": "NEARUSDT","side": "SHORT", "score": 0.72, "rank": 3, "st": -0.68, "mom": -0.11},
     ]
 
 @app.get("/positions")
@@ -133,6 +121,8 @@ app.include_router(rotation_router)
 app.include_router(trade_router)
 
 app.include_router(notification_router)
+
+app.include_router(rotator_push_router)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
