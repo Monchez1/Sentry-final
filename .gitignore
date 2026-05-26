@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+venv/
+.venv/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.db
+*.sqlite3
+
+# Environment files (NEVER commit secrets)
+.env
+.env.local
+.env.production
+*.env
+
+# Logs & runtime state
+*.log
+live_rotator_state.json
+live_rotator_trades.csv
+rotator.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Vite
+.vite/

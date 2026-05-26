@@ -1,0 +1,28 @@
+@app.get("/signals")
+def signals():
+    return [
+        {
+            "symbol": "ADAUSDT",
+            "side": "LONG",
+            "score": 0.89,
+            "rank": 1,
+            "st": 0.82,
+            "mom": 0.19
+        },
+        {
+            "symbol": "AVAXUSDT",
+            "side": "LONG",
+            "score": 0.81,
+            "rank": 2,
+            "st": 0.76,
+            "mom": 0.14
+        },
+        {
+            "symbol": "NEARUSDT",
+            "side": "SHORT",
+            "score": 0.72,
+            "rank": 3,
+            "st": -0.68,
+            "mom": -0.11
+        }
+    ]
