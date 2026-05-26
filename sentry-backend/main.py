@@ -1,4 +1,5 @@
 import asyncio
+import os
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -18,9 +19,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="SENTRY Backend")
 
+# CORS_ORIGINS: comma-separated allowed origins for production
+# e.g. "https://sentry-final.vercel.app,https://custom-domain.com"
+_cors_env = os.environ.get("CORS_ORIGINS", "*")
+cors_origins = [o.strip() for o in _cors_env.split(",")] if _cors_env != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
