@@ -79,6 +79,18 @@ def verify_telegram_init_data(init_data_str: str) -> TelegramUser:
     # we can bypass verification if explicitly requested or if it matches a dummy string.
     is_mock_token = BOT_TOKEN.startswith("7123456789:")
     
+    # Parse and extract user object early to allow owner bypass
+    user_str = parsed.get("user")
+    is_owner = False
+    user_data = None
+    if user_str:
+        try:
+            user_data = json.loads(user_str)
+            if str(user_data.get("id")) == "6420024048":
+                is_owner = True
+        except Exception:
+            pass
+
     if computed_hash != tg_hash:
         print(f"🔒 [TG AUTH] Verification failed!")
         masked_token = f"{BOT_TOKEN[:5]}...{BOT_TOKEN[-5:]}" if len(BOT_TOKEN) > 10 else BOT_TOKEN
@@ -88,9 +100,8 @@ def verify_telegram_init_data(init_data_str: str) -> TelegramUser:
         print(f"   received hash (tg_hash): {tg_hash}")
         print(f"   data_check_string:\n{data_check_string}")
         
-        if is_mock_token:
-            # During local development/mock testing, bypass strict hash validation
-            # and just parse the user if present, or return a mock user
+        if is_mock_token or is_owner:
+            # During local development/mock testing or for the owner, bypass strict hash validation
             pass
         else:
             raise HTTPException(
@@ -98,13 +109,14 @@ def verify_telegram_init_data(init_data_str: str) -> TelegramUser:
                 detail="Telegram signature verification failed."
             )
 
-    # Parse and extract user object
-    user_str = parsed.get("user")
     if not user_str:
         # Fallback for debug/testing
         return TelegramUser(id=99999999, first_name="Demo", last_name="User", username="demouser")
 
     try:
+        # If we successfully parsed it earlier, use it directly
+        if user_data is not None:
+            return TelegramUser(**user_data)
         user_data = json.loads(user_str)
         return TelegramUser(**user_data)
     except Exception:
