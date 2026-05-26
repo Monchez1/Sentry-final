@@ -22,6 +22,7 @@ class TelegramInitData(BaseModel):
 # In production, read this token from environment variables
 import os
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7123456789:ABCDefGhIJKLMNoPQRsTUVwxyZ-12345")
+BOT_TOKEN = BOT_TOKEN.strip().strip("'").strip('"')
 
 def verify_telegram_init_data(init_data_str: str) -> TelegramUser:
     """
@@ -77,6 +78,13 @@ def verify_telegram_init_data(init_data_str: str) -> TelegramUser:
     is_mock_token = BOT_TOKEN.startswith("7123456789:")
     
     if computed_hash != tg_hash:
+        print(f"🔒 [TG AUTH] Verification failed!")
+        masked_token = f"{BOT_TOKEN[:5]}...{BOT_TOKEN[-5:]}" if len(BOT_TOKEN) > 10 else BOT_TOKEN
+        print(f"   BOT_TOKEN: {masked_token}")
+        print(f"   computed_hash: {computed_hash}")
+        print(f"   received hash (tg_hash): {tg_hash}")
+        print(f"   data_check_string:\n{data_check_string}")
+        
         if is_mock_token:
             # During local development/mock testing, bypass strict hash validation
             # and just parse the user if present, or return a mock user
