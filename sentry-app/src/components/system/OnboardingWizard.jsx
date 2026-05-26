@@ -26,6 +26,7 @@ export default function OnboardingWizard({ onComplete }) {
     api_key: "",
     api_secret: "",
     passphrase: "",
+    skip_test: false,
   });
 
   // Settings Form (Combined Strategy + Risk defaults)
@@ -308,6 +309,19 @@ export default function OnboardingWizard({ onComplete }) {
                     />
                   </div>
                 )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="skip_test"
+                    checked={exchangeForm.skip_test}
+                    onChange={(e) => setExchangeForm({ ...exchangeForm, skip_test: e.target.checked })}
+                    className="h-4 w-4 rounded border-zinc-300 text-[#FF6B35] focus:ring-[#FF6B35]"
+                  />
+                  <label htmlFor="skip_test" className="text-xs font-semibold text-zinc-600 cursor-pointer">
+                    Skip connection test (save anyway)
+                  </label>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-2">

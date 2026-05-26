@@ -25,14 +25,15 @@ def create_exchange(
     db: Session = Depends(get_db),
     user: TelegramUser = Depends(get_current_tg_user)
 ):
-    # Test connection before saving
-    test_res = test_exchange(payload)
-    if not test_res.get("success"):
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=400,
-            detail=test_res.get("message", "API connection test failed.")
-        )
+    # Test connection before saving unless skip_test is true
+    if not payload.skip_test:
+        test_res = test_exchange(payload)
+        if not test_res.get("success"):
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=400,
+                detail=test_res.get("message", "API connection test failed.")
+            )
 
     # Check if exchange with same name already exists for this user
     exchange = db.query(Exchange).filter(

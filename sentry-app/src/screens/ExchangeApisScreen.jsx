@@ -15,6 +15,7 @@ export default function ExchangeApisScreen() {
     api_key: "",
     api_secret: "",
     passphrase: "",
+    skip_test: false,
   });
 
   const saveExchange = async () => {
@@ -27,6 +28,7 @@ export default function ExchangeApisScreen() {
         api_key: "",
         api_secret: "",
         passphrase: "",
+        skip_test: false,
       });
       refresh();
     } catch (err) {
@@ -175,6 +177,24 @@ export default function ExchangeApisScreen() {
                 }
                 className="w-full rounded-2xl bg-zinc-50 p-4 outline-none"
               />
+
+              <div className="flex items-center gap-2 py-1 px-1">
+                <input
+                  type="checkbox"
+                  id="screen_skip_test"
+                  checked={form.skip_test}
+                  onChange={(e) =>
+                    setForm({ ...form, skip_test: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-zinc-300 text-[#FF6B35] focus:ring-[#FF6B35]"
+                />
+                <label
+                  htmlFor="screen_skip_test"
+                  className="text-xs font-semibold text-zinc-600 cursor-pointer"
+                >
+                  Skip connection test (save anyway)
+                </label>
+              </div>
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button

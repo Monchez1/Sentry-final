@@ -5,6 +5,7 @@ class ExchangeCreate(BaseModel):
     api_key: str
     api_secret: str
     passphrase: str | None = None
+    skip_test: bool = False
 
 class ExchangeOut(BaseModel):
     id: int
