@@ -2,9 +2,11 @@ import axios from "axios";
 
 // In production, VITE_API_URL is set to the Render backend URL.
 // In local dev, it falls back to the same host on port 8000.
-const BASE_URL =
+const rawUrl =
   import.meta.env.VITE_API_URL ||
   `http://${window.location.hostname}:8000`;
+
+const BASE_URL = rawUrl.replace(/\/$/, "");
 
 const api = axios.create({
   baseURL: BASE_URL,

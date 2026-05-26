@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 
 function getWsUrl() {
   // Use the same backend URL as the REST API
-  const baseUrl =
+  const rawUrl =
     import.meta.env.VITE_API_URL ||
     `http://${window.location.hostname}:8000`;
+
+  // Remove trailing slash if present
+  const baseUrl = rawUrl.replace(/\/$/, "");
 
   // Convert http(s) to ws(s)
   return baseUrl.replace(/^http/, "ws") + "/ws";
