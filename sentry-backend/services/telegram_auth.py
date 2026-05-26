@@ -51,6 +51,8 @@ def verify_telegram_init_data(init_data_str: str) -> TelegramUser:
         )
 
     tg_hash = parsed.pop("hash")
+    # Pop signature if present (Telegram direct link / third-party launches include both hash and signature)
+    parsed.pop("signature", None)
     
     # Sort key-value pairs alphabetically
     sorted_pairs = sorted(parsed.items())
