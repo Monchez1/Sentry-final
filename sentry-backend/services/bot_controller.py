@@ -96,6 +96,7 @@ def export_settings_from_db(telegram_id: str = None):
             json.dump(settings, f, indent=2)
     except Exception as e:
         print(f"Error exporting settings: {e}")
+        raise e
     finally:
         db.close()
 
