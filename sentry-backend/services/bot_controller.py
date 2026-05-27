@@ -7,9 +7,21 @@ from database.models.strategy_settings import StrategySettings
 from database.models.risk_settings import RiskSettings
 from database.models.exchange import Exchange
 
-SETTINGS_FILE = Path("/home/kenyatta/sentry/runtime/settings.json")
-CONTROL_FILE = Path("/home/kenyatta/sentry/runtime/control.json")
-PID_FILE = Path("/home/kenyatta/sentry/runtime/rotator.pid")
+def get_runtime_dir():
+    default_dir = "/home/kenyatta/sentry/runtime"
+    try:
+        os.makedirs(default_dir, exist_ok=True)
+        test_file = Path(default_dir) / ".write_test"
+        test_file.touch()
+        test_file.unlink()
+        return Path(default_dir)
+    except (PermissionError, OSError):
+        return Path("/tmp")
+
+RUNTIME_DIR = get_runtime_dir()
+SETTINGS_FILE = RUNTIME_DIR / "settings.json"
+CONTROL_FILE = RUNTIME_DIR / "control.json"
+PID_FILE = RUNTIME_DIR / "rotator.pid"
 
 def export_settings_from_db(telegram_id: str = None):
     """

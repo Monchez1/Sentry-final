@@ -7,12 +7,20 @@ from typing import Optional
 # LOCAL fallback: read from the local filesystem (works when backend runs on
 # the same machine as the rotator, e.g. the dev machine).
 # ---------------------------------------------------------------------------
-ROTATOR_STATE_PATH = Path(
-    "/home/kenyatta/sentry/runtime/live_rotator_state.json"
-)
-SIGNALS_PATH = Path(
-    "/home/kenyatta/sentry/runtime/pending_signals.json"
-)
+def get_runtime_dir():
+    default_dir = "/home/kenyatta/sentry/runtime"
+    try:
+        os.makedirs(default_dir, exist_ok=True)
+        test_file = Path(default_dir) / ".write_test"
+        test_file.touch()
+        test_file.unlink()
+        return Path(default_dir)
+    except (PermissionError, OSError):
+        return Path("/tmp")
+
+RUNTIME_DIR = get_runtime_dir()
+ROTATOR_STATE_PATH = RUNTIME_DIR / "live_rotator_state.json"
+SIGNALS_PATH = RUNTIME_DIR / "pending_signals.json"
 
 
 def _parse_snapshot(raw: dict, signals: Optional[list] = None) -> dict:
