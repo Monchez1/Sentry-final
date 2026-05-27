@@ -4,7 +4,9 @@ import axios from "axios";
 // In local dev, it falls back to the same host on port 8000.
 const rawUrl =
   import.meta.env.VITE_API_URL ||
-  `http://${window.location.hostname}:8000`;
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? `http://${window.location.hostname}:8000`
+    : `https://sentry-final.onrender.com`);
 
 const BASE_URL = rawUrl.replace(/\/$/, "");
 

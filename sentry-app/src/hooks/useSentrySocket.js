@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 function getWsUrl() {
   const rawUrl =
     import.meta.env.VITE_API_URL ||
-    `http://${window.location.hostname}:8000`;
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? `http://${window.location.hostname}:8000`
+      : `https://sentry-final.onrender.com`);
   const baseUrl = rawUrl.replace(/\/$/, "");
   return baseUrl.replace(/^http/, "ws") + "/ws";
 }
