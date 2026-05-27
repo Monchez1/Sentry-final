@@ -69,6 +69,18 @@ async def push_state(
     if trades:
         db = SessionLocal()
         try:
+            # Fetch existing trades to do O(1) in-memory lookup
+            row_tg_id = trades[0].get("telegram_id") or "6420024048"
+            existing = db.query(TradeHistory.symbol, TradeHistory.closed_at, TradeHistory.pnl).filter(
+                TradeHistory.telegram_id == row_tg_id
+            ).all()
+            
+            existing_set = {
+                (t.symbol, t.closed_at, round(float(t.pnl), 4))
+                for t in existing
+            }
+
+            new_trades_added = 0
             for row in trades:
                 ts_str = row.get("closed_at")
                 if not ts_str:
@@ -82,21 +94,17 @@ async def push_state(
                     except ValueError:
                         ts = datetime.utcnow()
 
-                # Check if trade already exists
-                exists = db.query(TradeHistory).filter(
-                    TradeHistory.symbol == row.get("symbol"),
-                    TradeHistory.closed_at == ts,
-                    TradeHistory.pnl == float(row.get("pnl", 0.0))
-                ).first()
+                symbol = row.get("symbol")
+                pnl = float(row.get("pnl", 0.0))
+                pnl_rounded = round(pnl, 4)
 
-                if not exists:
-                    row_tg_id = row.get("telegram_id") or "6420024048"
+                if (symbol, ts, pnl_rounded) not in existing_set:
                     new_trade = TradeHistory(
-                        symbol=row.get("symbol"),
+                        symbol=symbol,
                         side=row.get("direction", "LONG"),
                         entry_price=float(row.get("entry", 0.0)),
                         exit_price=float(row.get("exit", 0.0)),
-                        pnl=float(row.get("pnl", 0.0)),
+                        pnl=pnl,
                         status="CLOSED",
                         closed_at=ts,
                         reason=row.get("reason", "UNKNOWN"),
@@ -106,10 +114,11 @@ async def push_state(
                         telegram_id=row_tg_id,
                     )
                     db.add(new_trade)
-                else:
-                    if not exists.telegram_id:
-                        exists.telegram_id = row.get("telegram_id") or "6420024048"
-            db.commit()
+                    new_trades_added += 1
+
+            if new_trades_added > 0:
+                db.commit()
+                print(f"[rotator_push] Successfully synced {new_trades_added} new trades to database.")
         except Exception as e:
             db.rollback()
             print(f"[rotator_push] Error syncing trades to database: {e}")
