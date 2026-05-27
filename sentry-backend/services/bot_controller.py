@@ -126,22 +126,32 @@ def is_rotator_running():
         return False
 
 def spawn_rotator():
-    if is_rotator_running():
-        return
-
     interpreter = "/home/kenyatta/sentry/venv/bin/python"
     script = "/home/kenyatta/sentry/rotator/live_paper_rotator.py"
 
-    p = subprocess.Popen(
-        [interpreter, script],
-        cwd="/home/kenyatta/sentry",
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True
-    )
-    PID_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PID_FILE.write_text(str(p.pid))
-    print(f"Spawned live_paper_rotator.py with PID {p.pid}")
+    # In cloud / Render environments, the local trading script/interpreter does not exist.
+    # We skip spawning and return cleanly so the control state is saved to settings/control
+    # which the local push agent will pull and apply to the local rotator.
+    if not Path(interpreter).exists() or not Path(script).exists():
+        print("[bot_controller] Local rotator interpreter or script not found. Skipping spawn (assumed cloud/Render environment).")
+        return
+
+    if is_rotator_running():
+        return
+
+    try:
+        p = subprocess.Popen(
+            [interpreter, script],
+            cwd="/home/kenyatta/sentry",
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+        PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+        PID_FILE.write_text(str(p.pid))
+        print(f"Spawned live_paper_rotator.py with PID {p.pid}")
+    except Exception as e:
+        print(f"Error spawning rotator: {e}")
 
 def write_control_file(running, command=None):
     CONTROL_FILE.parent.mkdir(parents=True, exist_ok=True)
