@@ -18,6 +18,7 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE strategy_settings ADD COLUMN IF NOT EXISTS profile VARCHAR(50) DEFAULT 'balanced';"))
         conn.execute(text("ALTER TABLE strategy_settings ADD COLUMN IF NOT EXISTS use_perf_multipliers BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE strategy_settings ADD COLUMN IF NOT EXISTS paper_trading BOOLEAN DEFAULT TRUE;"))
+        conn.execute(text("ALTER TABLE strategy_settings ADD COLUMN IF NOT EXISTS paper_start_balance FLOAT DEFAULT 10.0;"))
         conn.execute(text("ALTER TABLE risk_settings ADD COLUMN IF NOT EXISTS telegram_id VARCHAR(255) UNIQUE;"))
         conn.execute(text("ALTER TABLE risk_settings ADD COLUMN IF NOT EXISTS circuit_breaker_cooldown_scans INTEGER DEFAULT 15;"))
         conn.execute(text("ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS telegram_id VARCHAR(255);"))

@@ -20,6 +20,7 @@ class StrategySettingsPayload(BaseModel):
     profile: str = "balanced"
     use_perf_multipliers: bool = False
     paper_trading: bool = True
+    paper_start_balance: float = 10.0
 
 
 

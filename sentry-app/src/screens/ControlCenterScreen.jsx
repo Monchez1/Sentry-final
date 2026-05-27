@@ -76,6 +76,22 @@ export default function ControlCenterScreen() {
 
       <button
         onClick={() =>
+          call("/rotator/reset-balance", "Paper Balance Reset")
+        }
+        className="
+          w-full
+          rounded-[24px]
+          bg-indigo-600
+          p-4
+          text-white
+          font-semibold
+        "
+      >
+        Reset Paper Balance
+      </button>
+
+      <button
+        onClick={() =>
           call("/rotator/exit-all", "Positions Closed")
         }
         className="

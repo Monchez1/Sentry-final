@@ -42,6 +42,38 @@ export default function HomeScreen() {
   const rotation = snapshot.rotation;
   const positions = snapshot.positions || [];
 
+  const getStatusBadge = (val) => {
+    if (!val) return null;
+    const cleanVal = val.toUpperCase();
+    if (cleanVal === "ACTIVE" || cleanVal === "ENABLED") {
+      return (
+        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+          {cleanVal}
+        </span>
+      );
+    }
+    if (cleanVal === "COOLDOWN") {
+      return (
+        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/10 animate-pulse">
+          {cleanVal}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center rounded-full bg-zinc-50 px-2.5 py-0.5 text-[10px] font-bold text-zinc-600 ring-1 ring-inset ring-zinc-500/10">
+        {cleanVal}
+      </span>
+    );
+  };
+
+  const getPositionsBadge = () => {
+    return (
+      <span className="inline-flex items-center rounded-full bg-[#FF6B35]/10 px-2.5 py-0.5 text-[10px] font-bold text-[#FF6B35] ring-1 ring-inset ring-[#FF6B35]/20">
+        {portfolio.positions_filled}/{portfolio.max_positions}
+      </span>
+    );
+  };
+
   return (
     <div className="p-5 space-y-4">
 
@@ -94,37 +126,33 @@ export default function HomeScreen() {
           Portfolio Status
         </p>
 
-        <div className="mt-4 grid grid-cols-3 gap-4">
+        <div className="mt-4 grid grid-cols-3 gap-2">
 
-          <div>
-            <p className="text-xs text-zinc-500">
+          <div className="flex flex-col gap-1 items-start">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Positions
             </p>
-
-            <p className="text-xl font-bold">
-              {portfolio.positions_filled}/
-              {portfolio.max_positions}
-            </p>
+            <div className="mt-1 flex items-center">
+              {getPositionsBadge()}
+            </div>
           </div>
 
-          <div>
-            <p className="text-xs text-zinc-500">
+          <div className="flex flex-col gap-1 items-start">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Scanner
             </p>
-
-            <p className="text-xl font-bold">
-              {status.scanner}
-            </p>
+            <div className="mt-1 flex items-center">
+              {getStatusBadge(status.scanner)}
+            </div>
           </div>
 
-          <div>
-            <p className="text-xs text-zinc-500">
+          <div className="flex flex-col gap-1 items-start">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Rotation
             </p>
-
-            <p className="text-xl font-bold">
-              {status.rotation}
-            </p>
+            <div className="mt-1 flex items-center">
+              {getStatusBadge(status.rotation)}
+            </div>
           </div>
 
         </div>

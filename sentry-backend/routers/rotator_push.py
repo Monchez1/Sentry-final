@@ -65,7 +65,31 @@ async def push_state(
     finally:
         db.close()
 
-    return {"ok": True}
+    # Load strategy/risk settings and control state to return to the push agent
+    control_dict = {"running": True, "command": None}
+    settings_dict = {}
+    try:
+        from services.bot_controller import export_settings_from_db, write_control_file, SETTINGS_FILE, CONTROL_FILE
+        # Export settings from Postgres to settings.json file on Render container
+        export_settings_from_db()
+        if SETTINGS_FILE.exists():
+            with SETTINGS_FILE.open("r") as f:
+                settings_dict = json.load(f)
+
+        if CONTROL_FILE.exists():
+            with CONTROL_FILE.open("r") as f:
+                control_dict = json.load(f)
+            # If there is a command, clear it from Render's local disk so it only executes once
+            if control_dict.get("command"):
+                write_control_file(running=control_dict.get("running", True), command=None)
+    except Exception as err:
+        print(f"[rotator_push] Error loading settings/control to return: {err}")
+
+    return {
+        "ok": True,
+        "control": control_dict,
+        "settings": settings_dict
+    }
 
 
 @router.get("/push-state/status")

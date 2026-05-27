@@ -108,6 +108,10 @@ def rebalance(user: TelegramUser = Depends(get_current_tg_user)):
 def exit_all(user: TelegramUser = Depends(get_current_tg_user)):
     return bot_controller.exit_all()
 
+@app.post("/rotator/reset-balance")
+def reset_balance(user: TelegramUser = Depends(get_current_tg_user)):
+    return bot_controller.reset_balance()
+
 app.include_router(exchanges_router)
 
 app.include_router(strategy_router)

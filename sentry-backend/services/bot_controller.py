@@ -53,6 +53,7 @@ def export_settings_from_db(telegram_id: str = None):
                 "profile": strat.profile if strat.profile else "balanced",
                 "use_perf_multipliers": bool(strat.use_perf_multipliers) if strat.use_perf_multipliers is not None else False,
                 "paper_trading": bool(strat.paper_trading) if strat.paper_trading is not None else True,
+                "paper_start_balance": float(strat.paper_start_balance) if strat.paper_start_balance is not None else 10.0,
             })
             if not strat.paper_trading:
                 exchange = db.query(Exchange).filter(
@@ -147,3 +148,7 @@ def rebalance():
 def exit_all():
     write_control_file(running=False, command="exit_all")
     return {"message": "Positions exit triggered"}
+
+def reset_balance():
+    write_control_file(running=True, command="reset_balance")
+    return {"message": "Paper balance reset triggered"}

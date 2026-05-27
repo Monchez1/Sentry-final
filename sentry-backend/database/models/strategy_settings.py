@@ -41,6 +41,7 @@ class StrategySettings(Base):
     profile = Column(String, default="balanced")
     use_perf_multipliers = Column(Boolean, default=False)
     paper_trading = Column(Boolean, default=True)
+    paper_start_balance = Column(Float, default=10.0)
 
 
 

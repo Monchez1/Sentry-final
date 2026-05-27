@@ -124,7 +124,8 @@ export default function StrategySettingsScreen() {
     setForm({
       ...form,
       ...presetValues,
-      paper_trading: form.paper_trading !== undefined ? form.paper_trading : true
+      paper_trading: form.paper_trading !== undefined ? form.paper_trading : true,
+      paper_start_balance: form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0
     });
   };
 
@@ -158,6 +159,7 @@ export default function StrategySettingsScreen() {
         profile: form.profile || "balanced",
         use_perf_multipliers: Boolean(form.use_perf_multipliers),
         paper_trading: form.paper_trading !== undefined ? Boolean(form.paper_trading) : true,
+        paper_start_balance: Number(form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0),
       });
 
       toast.success("Strategy settings saved");
@@ -403,6 +405,12 @@ export default function StrategySettingsScreen() {
               label="Base Leverage"
               value={form.leverage}
               onChange={(e) => handleFieldChange("leverage", e.target.value)}
+            />
+
+            <Field
+              label="Starting Paper Balance (USDT)"
+              value={form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0}
+              onChange={(e) => handleFieldChange("paper_start_balance", e.target.value)}
             />
 
             <Field
