@@ -50,10 +50,12 @@ app = FastAPI(title="SENTRY Backend", lifespan=lifespan)
 # CORS
 _cors_env    = os.environ.get("CORS_ORIGINS", "*")
 cors_origins = [o.strip() for o in _cors_env.split(",")] if _cors_env != "*" else ["*"]
+allow_creds = False if "*" in cors_origins else True
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )
