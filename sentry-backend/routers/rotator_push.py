@@ -6,9 +6,11 @@ Security: a shared `PUSH_SECRET` env var must match the X-Push-Secret header.
 """
 import os
 import json
+from datetime import datetime
 from fastapi import APIRouter, Header, HTTPException, Request
 from database.config import SessionLocal
 from database.models.rotator_state import RotatorState
+from database.models.trade_history import TradeHistory
 
 router = APIRouter(
     prefix="/rotator",
@@ -27,7 +29,7 @@ async def push_state(
     Accepts a JSON payload from the local rotator and persists it to the DB.
     The rotator should call this every loop iteration.
 
-    Payload shape: { "snapshot": {...}, "signals": [...] }
+    Payload shape: { "snapshot": {...}, "signals": [...], "trades": [...] }
     """
     if x_push_secret != PUSH_SECRET:
         raise HTTPException(status_code=403, detail="Invalid push secret")
@@ -39,6 +41,7 @@ async def push_state(
 
     snapshot = body.get("snapshot")
     signals = body.get("signals")
+    trades = body.get("trades")
 
     if snapshot:
         db = SessionLocal()
@@ -60,6 +63,56 @@ async def push_state(
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"DB error: {e}")
+        finally:
+            db.close()
+
+    if trades:
+        db = SessionLocal()
+        try:
+            for row in trades:
+                ts_str = row.get("closed_at")
+                if not ts_str:
+                    continue
+
+                try:
+                    ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S.%f")
+                except ValueError:
+                    try:
+                        ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        ts = datetime.utcnow()
+
+                # Check if trade already exists
+                exists = db.query(TradeHistory).filter(
+                    TradeHistory.symbol == row.get("symbol"),
+                    TradeHistory.closed_at == ts,
+                    TradeHistory.pnl == float(row.get("pnl", 0.0))
+                ).first()
+
+                if not exists:
+                    row_tg_id = row.get("telegram_id") or "6420024048"
+                    new_trade = TradeHistory(
+                        symbol=row.get("symbol"),
+                        side=row.get("direction", "LONG"),
+                        entry_price=float(row.get("entry", 0.0)),
+                        exit_price=float(row.get("exit", 0.0)),
+                        pnl=float(row.get("pnl", 0.0)),
+                        status="CLOSED",
+                        closed_at=ts,
+                        reason=row.get("reason", "UNKNOWN"),
+                        bars_held=int(float(row.get("bars_held", 0))),
+                        margin=float(row.get("margin", 0.0)),
+                        balance=float(row.get("balance", 0.0)),
+                        telegram_id=row_tg_id,
+                    )
+                    db.add(new_trade)
+                else:
+                    if not exists.telegram_id:
+                        exists.telegram_id = row.get("telegram_id") or "6420024048"
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"[rotator_push] Error syncing trades to database: {e}")
         finally:
             db.close()
 
