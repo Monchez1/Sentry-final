@@ -5,7 +5,7 @@ import PositionCard from "../components/cards/PositionCard";
 import OnboardingWizard from "../components/system/OnboardingWizard";
 
 export default function HomeScreen() {
-  const { exchanges, loading: loadingExchanges, refresh: refreshExchanges } = useExchanges();
+  const { exchanges, loading: loadingExchanges, error: exchangesError, refresh: refreshExchanges } = useExchanges();
   const { connected, snapshot } = useSentrySocket();
 
   if (loadingExchanges) {
@@ -14,6 +14,26 @@ export default function HomeScreen() {
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#FF6B35] border-t-transparent" />
           <p className="text-sm font-semibold text-zinc-500">Checking exchange configurations...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (exchangesError) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-5">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="h-8 w-8 rounded-full border-4 border-red-500 border-t-transparent animate-spin" />
+          <p className="text-sm font-semibold text-red-500">API Connection Error</p>
+          <p className="text-xs text-zinc-400 max-w-[280px]">
+            Unable to connect to the backend server. Please verify your connection or the backend status.
+          </p>
+          <button 
+            onClick={refreshExchanges}
+            className="mt-2 rounded-full bg-[#FF6B35] px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90 active:scale-95 transition-all"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );

@@ -4,11 +4,16 @@ import api from "../services/api";
 export default function useExchanges() {
   const [exchanges, setExchanges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const loadExchanges = () => {
+    setError(null);
     api.get("/exchanges/")
       .then((res) => setExchanges(res.data))
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setError(err);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -19,6 +24,7 @@ export default function useExchanges() {
   return {
     exchanges,
     loading,
+    error,
     refresh: loadExchanges,
   };
 }
