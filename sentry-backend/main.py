@@ -48,9 +48,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="SENTRY Backend", lifespan=lifespan)
 
 # CORS
-_cors_env    = os.environ.get("CORS_ORIGINS", "*")
-cors_origins = [o.strip() for o in _cors_env.split(",")] if _cors_env != "*" else ["*"]
-allow_creds = False if "*" in cors_origins else True
+# Unconditionally allow all origins and disable credentials to prevent any browser CORS blocks.
+# Custom headers like Authorization: TelegramInitData do not require allow_credentials=True.
+cors_origins = ["*"]
+allow_creds = False
 
 app.add_middleware(
     CORSMiddleware,
