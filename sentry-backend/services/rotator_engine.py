@@ -102,7 +102,7 @@ class RotatorEngine:
         self.W_MOM: float = 0.15
 
         # Exchange client
-        self.exchange = ccxt.binanceusdm({"enableRateLimit": True})
+        self.exchange = None
 
         # Timing
         self._last_settings_hash: str = ""
@@ -116,6 +116,29 @@ class RotatorEngine:
     def _db(self):
         from database.config import SessionLocal
         return SessionLocal()
+
+    def init_paper_exchange(self):
+        """Initialise exchange client for paper trading, fallback to Bybit if geoblocked."""
+        if self.exchange is not None:
+            current_id = getattr(self.exchange, "id", "")
+            if current_id in ("binanceusdm", "bybit"):
+                return
+
+        # Attempt to use binanceusdm, fallback to bybit if geoblocked (e.g. Error 451/403)
+        try:
+            print("[rotator] Initialising Binance USDM for paper trading...")
+            test_exch = ccxt.binanceusdm({"enableRateLimit": True})
+            test_exch.load_markets()
+            self.exchange = test_exch
+            print("[rotator] Binance USDM initialised successfully for paper trading.")
+        except Exception as e:
+            err_str = str(e)
+            if "451" in err_str or "restricted" in err_str.lower() or "unavailable" in err_str.lower():
+                print(f"[rotator] Binance USDM geoblocked (Error 451/403). Falling back to Bybit...")
+                self.exchange = ccxt.bybit({"enableRateLimit": True})
+            else:
+                print(f"[rotator] Binance USDM init failed ({e}). Falling back to Bybit...")
+                self.exchange = ccxt.bybit({"enableRateLimit": True})
 
     # ──────────────────────────────────────────────────────────────────────
     # Config loading from DB
@@ -200,7 +223,7 @@ class RotatorEngine:
                         })
                         print(f"[rotator] Live exchange client initialised: {exch.name}")
             else:
-                self.exchange = ccxt.binanceusdm({"enableRateLimit": True})
+                self.init_paper_exchange()
 
             self.log_event("SETTINGS_RELOADED",
                 f"timeframe={self.TIMEFRAME}, max_pos={self.max_positions}, "
