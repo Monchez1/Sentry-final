@@ -1,57 +1,58 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function getWsUrl() {
-  // Use the same backend URL as the REST API
   const rawUrl =
     import.meta.env.VITE_API_URL ||
     `http://${window.location.hostname}:8000`;
-
-  // Remove trailing slash if present
   const baseUrl = rawUrl.replace(/\/$/, "");
-
-  // Convert http(s) to ws(s)
   return baseUrl.replace(/^http/, "ws") + "/ws";
 }
 
 export default function useSentrySocket() {
   const [connected, setConnected] = useState(false);
+  // snapshot is the LIVE snapshot; we keep last valid one so screen never blanks
   const [snapshot, setSnapshot] = useState(null);
+  const lastSnapshotRef = useRef(null);
 
   useEffect(() => {
     let socket;
     let reconnectTimer;
     let attempt = 0;
     let unmounted = false;
+    let pingTimer;
 
     const connect = () => {
       if (unmounted) return;
 
       const url = getWsUrl();
-      console.log(`[WS] connecting to ${url} (attempt ${attempt + 1})`);
 
       try {
         socket = new WebSocket(url);
       } catch (err) {
-        console.warn("[WS] failed to create socket:", err);
         scheduleReconnect();
         return;
       }
 
       socket.onopen = () => {
-        console.log("[WS] connected");
         attempt = 0;
         setConnected(true);
+
+        // Keep the connection alive with periodic pings
+        pingTimer = setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            try { socket.send("ping"); } catch (_) {}
+          }
+        }, 25000);
       };
 
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "snapshot") {
+            lastSnapshotRef.current = data;
             setSnapshot(data);
           }
-        } catch (err) {
-          console.warn("[WS] bad message:", err);
-        }
+        } catch (_) {}
       };
 
       socket.onerror = () => {
@@ -59,17 +60,21 @@ export default function useSentrySocket() {
       };
 
       socket.onclose = () => {
+        clearInterval(pingTimer);
         setConnected(false);
+        // Keep displaying the last known snapshot while reconnecting
+        if (lastSnapshotRef.current && !unmounted) {
+          setSnapshot(lastSnapshotRef.current);
+        }
         scheduleReconnect();
       };
     };
 
     const scheduleReconnect = () => {
       if (unmounted) return;
-      // Exponential backoff: 2s, 4s, 8s, 16s … capped at 30s
-      const delay = Math.min(2000 * Math.pow(2, attempt), 30000);
+      // Capped exponential back-off: 1s, 2s, 4s … max 15s
+      const delay = Math.min(1000 * Math.pow(2, attempt), 15000);
       attempt += 1;
-      console.log(`[WS] reconnecting in ${delay / 1000}s`);
       reconnectTimer = setTimeout(connect, delay);
     };
 
@@ -78,12 +83,10 @@ export default function useSentrySocket() {
     return () => {
       unmounted = true;
       clearTimeout(reconnectTimer);
+      clearInterval(pingTimer);
       if (socket) socket.close();
     };
   }, []);
 
-  return {
-    connected,
-    snapshot,
-  };
+  return { connected, snapshot };
 }

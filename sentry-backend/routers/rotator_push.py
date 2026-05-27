@@ -11,6 +11,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from database.config import SessionLocal
 from database.models.rotator_state import RotatorState
 from database.models.trade_history import TradeHistory
+from services.rotator_state_reader import update_cached_snapshot, _parse_snapshot
 
 router = APIRouter(
     prefix="/rotator",
@@ -60,6 +61,11 @@ async def push_state(
                 )
                 db.add(row)
             db.commit()
+            # Update in-memory cache immediately so WebSocket gets it on next tick
+            try:
+                update_cached_snapshot(_parse_snapshot(snapshot, signals))
+            except Exception:
+                pass
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"DB error: {e}")

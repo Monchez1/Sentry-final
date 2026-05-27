@@ -6,7 +6,7 @@ load_dotenv()
 from fastapi import FastAPI, WebSocket, Depends
 from state.sentry_state import state
 from services import bot_controller
-from services.rotator_state_reader import load_rotator_snapshot
+from services.rotator_state_reader import load_rotator_snapshot, clear_cached_snapshot
 from services.telegram_auth import get_current_tg_user, TelegramUser
 from routers.exchanges import router as exchanges_router
 from routers.strategy_settings import router as strategy_router
@@ -146,7 +146,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     **state
                 })
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
     except Exception:
         # Handle disconnection or connection reset cleanly
         pass
