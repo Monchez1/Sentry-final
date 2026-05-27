@@ -46,8 +46,10 @@ def list_trades(
                     ).first()
 
                     if not exists:
-                        # Use telegram_id from CSV row if available, else from current user
-                        row_tg_id = row.get("telegram_id") or str(user.id)
+                        # Use telegram_id from CSV row if available and not mock/null, else from current user
+                        row_tg_id = row.get("telegram_id")
+                        if not row_tg_id or row_tg_id in ("99999999", "null") or row_tg_id.strip() == "":
+                            row_tg_id = str(user.id)
                         new_trade = TradeHistory(
                             symbol=row.get("symbol"),
                             side=row.get("direction", "LONG"),
@@ -64,8 +66,11 @@ def list_trades(
                         )
                         db.add(new_trade)
                     else:
-                        if not exists.telegram_id:
-                            exists.telegram_id = row.get("telegram_id") or str(user.id)
+                        if not exists.telegram_id or exists.telegram_id in ("99999999", "null"):
+                            row_tg_id = row.get("telegram_id")
+                            if not row_tg_id or row_tg_id in ("99999999", "null") or row_tg_id.strip() == "":
+                                row_tg_id = str(user.id)
+                            exists.telegram_id = row_tg_id
             db.commit()
 
         except Exception as e:

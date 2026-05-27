@@ -41,6 +41,10 @@ def export_settings_from_db(telegram_id: str = None):
         else:
             strat = db.query(StrategySettings).first()
             risk = db.query(RiskSettings).first()
+            if strat:
+                telegram_id = strat.telegram_id
+            elif risk:
+                telegram_id = risk.telegram_id
 
         settings = {}
         if strat:

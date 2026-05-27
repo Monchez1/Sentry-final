@@ -69,8 +69,15 @@ async def push_state(
     if trades:
         db = SessionLocal()
         try:
-            # Fetch existing trades to do O(1) in-memory lookup
-            row_tg_id = trades[0].get("telegram_id") or "6420024048"
+            # Resolve target telegram_id for this batch, defaulting to owner 6420024048.
+            # We look for a valid non-mock, non-null telegram_id in the payload.
+            row_tg_id = "6420024048"
+            for t in trades:
+                tid = t.get("telegram_id")
+                if tid and tid not in ("99999999", "null") and tid.strip() != "":
+                    row_tg_id = tid.strip()
+                    break
+
             existing = db.query(TradeHistory.symbol, TradeHistory.closed_at, TradeHistory.pnl).filter(
                 TradeHistory.telegram_id == row_tg_id
             ).all()
