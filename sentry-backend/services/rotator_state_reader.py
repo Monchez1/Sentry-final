@@ -85,11 +85,12 @@ def _parse_snapshot(raw: dict, signals: Optional[list] = None) -> dict:
             "progress": progress,
         })
 
+    start_bal = raw.get("paper_start_balance", 10.0)
     result = {
         "portfolio": {
             "equity": round(raw.get("equity", 0), 2),
-            "today_pnl": round(raw.get("equity", 0) - 10.0, 2),
-            "today_pnl_pct": round(((raw.get("equity", 10.0) - 10.0) / 10.0) * 100, 2),
+            "today_pnl": round(raw.get("equity", 0) - start_bal, 2),
+            "today_pnl_pct": round(((raw.get("equity", start_bal) - start_bal) / start_bal) * 100, 2),
             "positions_filled": positions_filled,
             "max_positions": 4,
             "drawdown": round(raw.get("drawdown_pct", 0), 2),
@@ -148,18 +149,37 @@ def _load_from_local_file() -> Optional[dict]:
         return None
 
 
+_cached_snapshot = None
+
+def update_cached_snapshot(snap: dict):
+    global _cached_snapshot
+    _cached_snapshot = snap
+
+def clear_cached_snapshot():
+    global _cached_snapshot
+    _cached_snapshot = None
+
 def load_rotator_snapshot() -> Optional[dict]:
     """
     Load the latest rotator snapshot.
 
     Priority:
-      1. Neon DB (works when backend is on Render / any cloud host)
-      2. Local filesystem (works when backend runs on the same machine as rotator)
+      1. In-memory cache (works instantly for WebSocket loops)
+      2. Neon DB (works when backend is on Render / any cloud host)
+      3. Local filesystem (works when backend runs on the same machine as rotator)
     """
+    global _cached_snapshot
+    if _cached_snapshot is not None:
+        return _cached_snapshot
+
     # Try DB first
     snap = _load_from_db()
     if snap is not None:
+        _cached_snapshot = snap
         return snap
 
     # Fallback to local file (dev mode / same-machine deployments)
-    return _load_from_local_file()
+    snap = _load_from_local_file()
+    if snap is not None:
+        _cached_snapshot = snap
+    return snap
