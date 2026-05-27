@@ -2,11 +2,12 @@ import axios from "axios";
 
 // In production, VITE_API_URL is set to the Render backend URL.
 // In local dev, it falls back to the same host on port 8000.
-const rawUrl =
-  import.meta.env.VITE_API_URL ||
-  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+let rawUrl = import.meta.env.VITE_API_URL || "";
+if (!rawUrl || rawUrl.includes("sentry-backend-p2i1")) {
+  rawUrl = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
     ? `http://${window.location.hostname}:8000`
-    : `https://sentry-final.onrender.com`);
+    : `https://sentry-final.onrender.com`;
+}
 
 const BASE_URL = rawUrl.replace(/\/$/, "");
 
