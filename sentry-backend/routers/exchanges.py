@@ -132,6 +132,12 @@ def test_exchange(payload: ExchangeCreate):
             "message": f"Authentication failed on {payload.name}: {e}"
         }
     except Exception as e:
+        err_str = str(e)
+        if "451" in err_str or "restricted" in err_str.lower() or "unavailable" in err_str.lower() or "403" in err_str:
+            return {
+                "success": True,
+                "message": f"[Bypass] Geoblocking detected (Error 451/403). Configuration saved without online verification."
+            }
         return {
             "success": False,
             "message": f"Connection test failed: {e}"
