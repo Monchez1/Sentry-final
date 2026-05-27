@@ -81,14 +81,7 @@ async def push_state(
             if control_dict.get("command"):
                 write_control_file(running=control_dict.get("running", True), command=None)
     except Exception as err:
-        import traceback
-        return {
-            "ok": True,
-            "control": control_dict,
-            "settings": settings_dict,
-            "error": str(err),
-            "traceback": traceback.format_exc()
-        }
+        print(f"[rotator_push] Error loading settings/control to return: {err}")
 
     return {
         "ok": True,
