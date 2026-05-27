@@ -4,42 +4,6 @@ import useExchanges from "../hooks/useExchanges";
 import PositionCard from "../components/cards/PositionCard";
 import OnboardingWizard from "../components/system/OnboardingWizard";
 
-/** Smoothly animates a numeric value whenever it changes */
-function useAnimatedValue(target, decimals = 2, durationMs = 600) {
-  const [display, setDisplay] = useState(target);
-  const frameRef = useRef(null);
-  const startRef = useRef(null);
-  const fromRef = useRef(target);
-
-  useEffect(() => {
-    if (target === fromRef.current) return;
-    const from = fromRef.current;
-    const to = target;
-
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    startRef.current = null;
-
-    const step = (ts) => {
-      if (!startRef.current) startRef.current = ts;
-      const progress = Math.min((ts - startRef.current) / durationMs, 1);
-      // ease-out cubic
-      const ease = 1 - Math.pow(1 - progress, 3);
-      const current = from + (to - from) * ease;
-      setDisplay(parseFloat(current.toFixed(decimals)));
-      if (progress < 1) {
-        frameRef.current = requestAnimationFrame(step);
-      } else {
-        fromRef.current = to;
-      }
-    };
-
-    frameRef.current = requestAnimationFrame(step);
-    return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current); };
-  }, [target, decimals, durationMs]);
-
-  return display;
-}
-
 export default function HomeScreen() {
   const { exchanges, loading: loadingExchanges, refresh: refreshExchanges } = useExchanges();
   const { connected, snapshot } = useSentrySocket();
