@@ -40,30 +40,28 @@ async def push_state(
     snapshot = body.get("snapshot")
     signals = body.get("signals")
 
-    if not snapshot:
-        raise HTTPException(status_code=400, detail="Missing 'snapshot' key")
-
-    db = SessionLocal()
-    try:
-        # We maintain a single row per "deployment" (no multi-user rotator yet).
-        # Using id=1 as the singleton row; upsert pattern.
-        row = db.query(RotatorState).filter(RotatorState.id == 1).first()
-        if row:
-            row.snapshot_json = json.dumps(snapshot)
-            row.signals_json = json.dumps(signals) if signals is not None else None
-        else:
-            row = RotatorState(
-                id=1,
-                snapshot_json=json.dumps(snapshot),
-                signals_json=json.dumps(signals) if signals is not None else None,
-            )
-            db.add(row)
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"DB error: {e}")
-    finally:
-        db.close()
+    if snapshot:
+        db = SessionLocal()
+        try:
+            # We maintain a single row per "deployment" (no multi-user rotator yet).
+            # Using id=1 as the singleton row; upsert pattern.
+            row = db.query(RotatorState).filter(RotatorState.id == 1).first()
+            if row:
+                row.snapshot_json = json.dumps(snapshot)
+                row.signals_json = json.dumps(signals) if signals is not None else None
+            else:
+                row = RotatorState(
+                    id=1,
+                    snapshot_json=json.dumps(snapshot),
+                    signals_json=json.dumps(signals) if signals is not None else None,
+                )
+                db.add(row)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"DB error: {e}")
+        finally:
+            db.close()
 
     # Load strategy/risk settings and control state to return to the push agent
     control_dict = {"running": True, "command": None}
