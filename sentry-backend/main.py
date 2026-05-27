@@ -1,5 +1,6 @@
 import asyncio
 import os
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -7,6 +8,7 @@ from fastapi import FastAPI, WebSocket, Depends
 from state.sentry_state import state
 from services import bot_controller
 from services.rotator_state_reader import load_rotator_snapshot, clear_cached_snapshot
+from services.rotator_engine import start_engine
 from services.telegram_auth import get_current_tg_user, TelegramUser
 from routers.exchanges import router as exchanges_router
 from routers.strategy_settings import router as strategy_router
@@ -18,13 +20,36 @@ from routers.notification_settings import router as notification_router
 from routers.rotator_push import router as rotator_push_router
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="SENTRY Backend")
 
-# CORS_ORIGINS: comma-separated allowed origins for production
-# e.g. "https://sentry-final.vercel.app,https://custom-domain.com"
-_cors_env = os.environ.get("CORS_ORIGINS", "*")
+# ── Lifespan: start the cloud rotator engine when FastAPI boots ───────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Run the DB migration for new columns (idempotent — ADD COLUMN IF NOT EXISTS)
+    try:
+        from database.config import DATABASE_URL
+        from sqlalchemy import create_engine, text
+        _engine = create_engine(DATABASE_URL)
+        with _engine.connect() as conn:
+            conn.execute(text(
+                "ALTER TABLE rotator_state ADD COLUMN IF NOT EXISTS control VARCHAR(64);"
+            ))
+            conn.commit()
+        _engine.dispose()
+    except Exception as _e:
+        print(f"[startup] DB migration skipped / already applied: {_e}")
+
+    # Launch the rotator as a background daemon thread
+    start_engine()
+    print("[startup] Cloud rotator engine launched.")
+    yield
+    # (no teardown needed — daemon thread exits with the process)
+
+
+app = FastAPI(title="SENTRY Backend", lifespan=lifespan)
+
+# CORS
+_cors_env    = os.environ.get("CORS_ORIGINS", "*")
 cors_origins = [o.strip() for o in _cors_env.split(",")] if _cors_env != "*" else ["*"]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -32,6 +57,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Health endpoint (pinged every 14 min by rotator to prevent Render spin-down)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 @app.get("/")
 def root():
@@ -44,31 +74,12 @@ def portfolio():
         return snap["portfolio"]
     return state["portfolio"]
 
-
 @app.get("/signals")
 def signals():
-    # Try DB first (Render deployment)
     snap = load_rotator_snapshot()
     if snap and snap.get("signals"):
         return snap["signals"]
-
-    # Fallback to local file (dev / same-machine deployment)
-    import json
-    from pathlib import Path
-    signals_file = Path("/home/kenyatta/sentry/runtime/pending_signals.json")
-    if signals_file.exists():
-        try:
-            with signals_file.open("r") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading pending signals: {e}")
-
-    # Last resort: static demo data
-    return [
-        {"symbol": "ADAUSDT", "side": "LONG",  "score": 0.89, "rank": 1, "st": 0.82,  "mom": 0.19},
-        {"symbol": "AVAXUSDT","side": "LONG",  "score": 0.81, "rank": 2, "st": 0.76,  "mom": 0.14},
-        {"symbol": "NEARUSDT","side": "SHORT", "score": 0.72, "rank": 3, "st": -0.68, "mom": -0.11},
-    ]
+    return []
 
 @app.get("/positions")
 def positions():
@@ -77,19 +88,18 @@ def positions():
         return snap["positions"]
     return []
 
-
 @app.get("/rotations")
 def rotations():
-    live_snapshot = load_rotator_snapshot()
-    if live_snapshot:
-        return live_snapshot["rotation"]
+    snap = load_rotator_snapshot()
+    if snap:
+        return snap["rotation"]
     return state["rotation"]
 
 @app.get("/status")
 def status():
-    live_snapshot = load_rotator_snapshot()
-    if live_snapshot:
-        return live_snapshot["status"]
+    snap = load_rotator_snapshot()
+    if snap:
+        return snap["status"]
     return state["status"]
 
 @app.post("/rotator/start")
@@ -113,20 +123,14 @@ def reset_balance(user: TelegramUser = Depends(get_current_tg_user)):
     return bot_controller.reset_balance()
 
 app.include_router(exchanges_router)
-
 app.include_router(strategy_router)
-
 app.include_router(risk_router)
-
 app.include_router(activity_router)
-
 app.include_router(rotation_router)
-
 app.include_router(trade_router)
-
 app.include_router(notification_router)
-
 app.include_router(rotator_push_router)
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -134,20 +138,10 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             live_snapshot = load_rotator_snapshot()
-
-            if live_snapshot:
-                await websocket.send_json({
-                    "type": "snapshot",
-                    **live_snapshot
-                })
-            else:
-                await websocket.send_json({
-                    "type": "snapshot",
-                    **state
-                })
-
+            await websocket.send_json({
+                "type": "snapshot",
+                **(live_snapshot if live_snapshot else state),
+            })
             await asyncio.sleep(1)
     except Exception:
-        # Handle disconnection or connection reset cleanly
         pass
-
