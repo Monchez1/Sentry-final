@@ -29,11 +29,7 @@ function App() {
       tgApp.ready();
       tgApp.expand();
 
-      if (tgApp.colorScheme === "dark") {
-        document.documentElement.classList.add("tg-theme-dark");
-      } else {
-        document.documentElement.classList.remove("tg-theme-dark");
-      }
+
     }
   }, [tg, theme]);
 

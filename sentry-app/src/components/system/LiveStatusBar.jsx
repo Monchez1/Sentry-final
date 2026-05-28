@@ -22,7 +22,7 @@ export default function LiveStatusBar() {
 
         <div className="text-xs font-semibold flex items-center gap-1.5">
           <span className={snapshot?.paper_trading ? "text-amber-600" : "text-emerald-600"}>
-            {snapshot?.paper_trading ? "Paper Mode" : "Real Money"}
+            {snapshot?.paper_trading ? "Paper Mode" : "Real"}
           </span>
           <span className="text-zinc-300">·</span>
           <span className="text-zinc-500">

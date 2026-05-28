@@ -110,13 +110,6 @@ export default function HomeScreen() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className={connected
-              ? "h-3 w-3 rounded-full bg-green-500 shadow-[0_0_6px_2px_rgba(34,197,94,0.5)]"
-              : "h-3 w-3 rounded-full bg-red-500"
-            } />
-            <span className="font-semibold text-zinc-700 text-sm">
-              {connected ? "LIVE" : "OFFLINE"}
-            </span>
             {snapshot.paper_trading !== undefined && (
               <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide ${
                 snapshot.paper_trading
