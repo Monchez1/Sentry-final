@@ -65,6 +65,17 @@ export default function ExchangeApisScreen() {
     }
   };
 
+  const activateExchange = async (id) => {
+    try {
+      await api.post(`/exchanges/${id}/activate`);
+      toast.success("Exchange connection activated");
+      refresh();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to activate exchange connection");
+    }
+  };
+
 
   return (
     <div className="p-5 space-y-4">
@@ -103,7 +114,16 @@ export default function ExchangeApisScreen() {
             </div>
 
             <div className="flex items-center gap-3">
-              <ShieldCheck className="text-green-500" />
+              {exchange.active ? (
+                <ShieldCheck className="text-green-500" />
+              ) : (
+                <button
+                  onClick={() => activateExchange(exchange.id)}
+                  className="rounded-xl bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 transition"
+                >
+                  Activate
+                </button>
+              )}
               <button
                 onClick={() => deleteExchange(exchange.id)}
                 className="rounded-xl p-2 text-red-500 hover:bg-red-50 active:bg-red-100 transition dark:hover:bg-red-950/20"

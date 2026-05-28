@@ -144,6 +144,39 @@ def test_exchange(payload: ExchangeCreate):
         }
 
 
+@router.post("/{exchange_id}/activate", response_model=ExchangeOut)
+def activate_exchange(
+    exchange_id: int,
+    db: Session = Depends(get_db),
+    user: TelegramUser = Depends(get_current_tg_user)
+):
+    # Set all of this user's exchanges to inactive
+    db.query(Exchange).filter(Exchange.telegram_id == str(user.id)).update({"active": False})
+
+    # Set the selected exchange to active
+    exchange = db.query(Exchange).filter(
+        Exchange.telegram_id == str(user.id),
+        Exchange.id == exchange_id
+    ).first()
+
+    if not exchange:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Exchange connection not found")
+
+    exchange.active = True
+    db.commit()
+    db.refresh(exchange)
+
+    log_event(
+        db,
+        "EXCHANGE_ACTIVATED",
+        f"Activated exchange {exchange.name} for Telegram user {user.username or user.id}",
+        telegram_id=str(user.id),
+    )
+
+    return exchange
+
+
 @router.delete("/{exchange_id}")
 def delete_exchange(
     exchange_id: int,
