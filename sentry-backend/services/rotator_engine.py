@@ -806,14 +806,21 @@ class RotatorEngine:
         return margin, notional
 
     def _update_trailing_stop(self, pos, price, high, low, atr_val):
-        if pos["direction"] == "LONG":
-            pos["peak_price"] = max(pos["peak_price"], high)
-            new_stop = pos["peak_price"] - self.atr_sl_mult * atr_val
-            pos["trail_stop"] = max(pos["trail_stop"], new_stop)
+        if pos.get("bars_held", 0) >= 1:
+            if pos["direction"] == "LONG":
+                pos["peak_price"] = max(pos["peak_price"], high)
+                new_stop = pos["peak_price"] - self.atr_sl_mult * atr_val
+                pos["trail_stop"] = max(pos["trail_stop"], new_stop)
+            else:
+                pos["trough_price"] = min(pos["trough_price"], low)
+                new_stop = pos["trough_price"] + self.atr_sl_mult * atr_val
+                pos["trail_stop"] = min(pos["trail_stop"], new_stop)
         else:
-            pos["trough_price"] = min(pos["trough_price"], low)
-            new_stop = pos["trough_price"] + self.atr_sl_mult * atr_val
-            pos["trail_stop"] = min(pos["trail_stop"], new_stop)
+            entry = pos["entry"]
+            if pos["direction"] == "LONG":
+                pos["trail_stop"] = entry - self.atr_sl_mult * atr_val
+            else:
+                pos["trail_stop"] = entry + self.atr_sl_mult * atr_val
 
     def open_position(self, candidate):
         symbol    = candidate["symbol"]
@@ -955,6 +962,7 @@ class RotatorEngine:
                 low   = current["low"];   atr_val = current["atr"]; score = current["score"]
 
             pos["bars_held"] += 1
+            pos["score"] = score
             self._update_trailing_stop(pos, price, high, low, atr_val)
 
             direction = pos["direction"]; entry = pos["entry"]; margin = pos["margin"]
@@ -1046,7 +1054,21 @@ class RotatorEngine:
         if len(self.open_positions) < self.max_positions:
             return
         # Rotation: replace weakest
-        eligible = [(s, p) for s, p in self.open_positions.items() if p["bars_held"] >= self.min_hold]
+        eligible = []
+        for s, p in self.open_positions.items():
+            if p.get("bars_held", 0) < self.min_hold:
+                continue
+            is_in_loss = p.get("pnl", 0.0) < 0.0
+            current_score = p.get("score", 0.0)
+            direction = p.get("direction", "LONG")
+            signal_reversed = False
+            if direction == "LONG" and current_score <= 0.0:
+                signal_reversed = True
+            elif direction == "SHORT" and current_score >= 0.0:
+                signal_reversed = True
+            if is_in_loss and not signal_reversed:
+                continue
+            eligible.append((s, p))
         if not eligible or not valid:
             return
         weakest_sym, weakest_pos = min(eligible, key=lambda x: abs(x[1].get("score", 0)))
