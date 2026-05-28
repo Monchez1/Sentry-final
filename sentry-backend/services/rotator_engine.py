@@ -990,6 +990,14 @@ class RotatorEngine:
             if direction == "SHORT" and high >= pos["trail_stop"]:
                 to_close.append((symbol, "STOP_LOSS", pos["trail_stop"], True)); continue
 
+            # Rule D: take profit
+            if target_dist > 0:
+                tp_price = entry + target_dist if direction == "LONG" else entry - target_dist
+                if direction == "LONG" and high >= tp_price:
+                    to_close.append((symbol, "TAKE_PROFIT", tp_price, True)); continue
+                if direction == "SHORT" and low <= tp_price:
+                    to_close.append((symbol, "TAKE_PROFIT", tp_price, True)); continue
+
             # Rule C: signal fade
             if pos["bars_held"] >= self.min_hold:
                 if direction == "LONG"  and score < 0.0:
@@ -1034,6 +1042,12 @@ class RotatorEngine:
                     to_close.append((sym, "STOP_LOSS", pos["trail_stop"], True)); continue
                 if direction == "SHORT" and high >= pos["trail_stop"]:
                     to_close.append((sym, "STOP_LOSS", pos["trail_stop"], True)); continue
+                if target_dist > 0:
+                    tp_price = entry + target_dist if direction == "LONG" else entry - target_dist
+                    if direction == "LONG" and high >= tp_price:
+                        to_close.append((sym, "TAKE_PROFIT", tp_price, True)); continue
+                    if direction == "SHORT" and low <= tp_price:
+                        to_close.append((sym, "TAKE_PROFIT", tp_price, True)); continue
             for sym, reason, price, cd in to_close:
                 if sym in self.open_positions:
                     self.close_position(sym, reason, price, cd)
@@ -1057,16 +1071,6 @@ class RotatorEngine:
         eligible = []
         for s, p in self.open_positions.items():
             if p.get("bars_held", 0) < self.min_hold:
-                continue
-            is_in_loss = p.get("pnl", 0.0) < 0.0
-            current_score = p.get("score", 0.0)
-            direction = p.get("direction", "LONG")
-            signal_reversed = False
-            if direction == "LONG" and current_score <= 0.0:
-                signal_reversed = True
-            elif direction == "SHORT" and current_score >= 0.0:
-                signal_reversed = True
-            if is_in_loss and not signal_reversed:
                 continue
             eligible.append((s, p))
         if not eligible or not valid:

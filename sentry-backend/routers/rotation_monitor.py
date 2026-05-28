@@ -1,14 +1,10 @@
 from fastapi import APIRouter
-import json
-from pathlib import Path
+from services.rotator_state_reader import load_rotator_snapshot
 
 router = APIRouter(
     prefix="/rotation-monitor",
     tags=["Rotation Monitor"],
 )
-
-STATE_FILE = Path("/home/kenyatta/sentry/runtime/live_rotator_state.json")
-SIGNALS_FILE = Path("/home/kenyatta/sentry/runtime/pending_signals.json")
 
 @router.get("/")
 def get_rotation_monitor():
@@ -24,28 +20,19 @@ def get_rotation_monitor():
         "expected_improvement": 0.0
     }
 
-    if not STATE_FILE.exists():
-        return data
-
     try:
-        with STATE_FILE.open("r") as f:
-            state = json.load(f)
+        snap = load_rotator_snapshot()
+        if not snap:
+            return data
         
-        rot = state.get("rotation", {})
+        rot = snap.get("rotation", {})
         current = rot.get("current", "-")
         current_score = rot.get("current_score", 0.0)
         candidate = rot.get("candidate", "-")
         candidate_score = rot.get("candidate_score", 0.0)
         decision = rot.get("decision", "HOLD")
 
-        # Load signals to find ranks
-        signals = []
-        if SIGNALS_FILE.exists():
-            try:
-                with SIGNALS_FILE.open("r") as f:
-                    signals = json.load(f)
-            except Exception:
-                signals = []
+        signals = snap.get("signals", []) or []
 
         current_rank = 0
         candidate_rank = 0
@@ -68,7 +55,7 @@ def get_rotation_monitor():
             "candidate": candidate or "-",
             "candidate_score": candidate_score or 0.0,
             "score_difference": score_difference,
-            "decision": decision,
+            "decision": decision or "HOLD",
             "current_rank": current_rank,
             "candidate_rank": candidate_rank,
             "expected_improvement": expected_improvement
