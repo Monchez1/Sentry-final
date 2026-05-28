@@ -1005,8 +1005,8 @@ class RotatorEngine:
                 if not t: continue
                 price = t.get("last") or t.get("close")
                 if not price: continue
-                high = t.get("high") or price
-                low  = t.get("low")  or price
+                high = price
+                low  = price
                 self._update_trailing_stop(pos, price, high, low, pos["atr"])
                 pos["current_price"] = price
                 direction = pos["direction"]; entry = pos["entry"]; margin = pos["margin"]
