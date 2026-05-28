@@ -52,7 +52,7 @@ async def push_state(
             row = db.query(RotatorState).filter(RotatorState.id == 1).first()
             if row:
                 row.snapshot_json = json.dumps(snapshot)
-                row.signals_json = json.dumps(signals) if signals is not None else None
+                row.signals_json = json.dumps(signals) if signals is not None else row.signals_json
             else:
                 row = RotatorState(
                     id=1,
@@ -63,7 +63,10 @@ async def push_state(
             db.commit()
             # Update in-memory cache immediately so WebSocket gets it on next tick
             try:
-                update_cached_snapshot(_parse_snapshot(snapshot, signals))
+                db_signals = signals
+                if db_signals is None and row and row.signals_json:
+                    db_signals = json.loads(row.signals_json)
+                update_cached_snapshot(_parse_snapshot(snapshot, db_signals))
             except Exception:
                 pass
         except Exception as e:

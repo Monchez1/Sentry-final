@@ -357,7 +357,13 @@ class RotatorEngine:
             db.commit()
 
             # Update in-memory cache so WebSocket sees it immediately
-            parsed = _parse_snapshot(raw_state, signals_list)
+            db_signals = signals_list
+            if db_signals is None and row and row.signals_json:
+                try:
+                    db_signals = json.loads(row.signals_json)
+                except Exception:
+                    pass
+            parsed = _parse_snapshot(raw_state, db_signals)
             update_cached_snapshot(parsed)
         except Exception as e:
             print(f"[rotator] save_state DB error: {e}")
