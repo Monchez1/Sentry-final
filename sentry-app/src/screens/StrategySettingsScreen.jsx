@@ -103,6 +103,26 @@ const PRESETS = {
     auto_rotation: true,
     entry_thr: 0.4,
     use_perf_multipliers: false,
+  },
+  scalper: {
+    profile: "scalper",
+    timeframe: "5m",
+    leverage: 10,
+    alloc_ratio: 0.33,
+    atr_sl_mult: 2.0,
+    use_ema_filter: true,
+    use_telescoping_leverage: true,
+    max_positions: 4,
+    risk_per_trade: 0.02,
+    rotation_threshold: 0.25,
+    stop_loss_pct: 0.015,
+    take_profit_rr: 1.5,
+    cooldown_scans: 1,
+    min_hold: 4,
+    score_set: "balanced_mom",
+    auto_rotation: true,
+    entry_thr: 0.35,
+    use_perf_multipliers: false,
   }
 };
 
@@ -242,6 +262,26 @@ export default function StrategySettingsScreen() {
               )}
             </div>
             <p className="text-zinc-500 text-xs mt-1">Aggressive 300x model. High velocity using 15m candles, 33% trade sizing, tighter stops, and telescoping leverage (up to 20x).</p>
+          </button>
+
+          {/* Scalper Card */}
+          <button
+            onClick={() => applyPreset("scalper")}
+            className={`text-left p-4 rounded-2xl border-2 transition-all ${
+              form.profile === "scalper"
+                ? "border-[#FF6B35] bg-[#FF6B35]/5"
+                : "border-zinc-100 hover:border-zinc-200 bg-zinc-50/50"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-zinc-800 flex items-center gap-2">
+                ⚡ Scalper
+              </span>
+              {form.profile === "scalper" && (
+                <span className="text-xs bg-[#FF6B35] text-white px-2 py-0.5 rounded-full font-semibold">Active</span>
+              )}
+            </div>
+            <p className="text-zinc-500 text-xs mt-1">High-frequency setups. Trades on 5m charts with tight 2.0 ATR stops, fast 1.5 TP targets, 33% trade compounding, and performance locks disabled for constant setups.</p>
           </button>
 
           {/* Custom Card */}
