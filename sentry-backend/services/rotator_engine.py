@@ -1150,6 +1150,7 @@ class RotatorEngine:
                     self.close_all_positions("BALANCE_RESET")
                     self.balance      = self.paper_start_balance
                     self.peak_balance = self.paper_start_balance
+                    self.closed_trades = []
                     self.log_event("BALANCE_RESET", f"Paper balance reset to ${self.paper_start_balance}")
                     last_scan_time = 0.0
 
