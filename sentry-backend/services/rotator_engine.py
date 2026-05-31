@@ -800,7 +800,8 @@ class RotatorEngine:
             price = float(df["close"].iloc[-1])
             entry = pos["entry"]
             ret = ((price - entry) / entry) if pos["direction"] == "LONG" else ((entry - price) / entry)
-            equity += pos["margin"] + pos["margin"] * self.leverage * ret
+            lev_pos = pos.get("leverage", self.leverage)
+            equity += pos["margin"] + pos["margin"] * lev_pos * ret
         return equity
 
     def _calc_entry_size(self, equity: float):
@@ -956,8 +957,8 @@ class RotatorEngine:
             atr_val = float(last["atr_sl"]) if "atr_sl" in last else pos["atr"]
             score   = float(last["composite_score"])
 
-            # 1. EMA Trend Filter Check (Checked on ALL open positions)
-            if self.use_ema_filter:
+            # 1. EMA Trend Filter Check (skip on bar 0 — just opened this scan)
+            if self.use_ema_filter and pos.get("bars_held", 0) >= 1:
                 if pos["direction"] == "LONG"  and price < last["ema_trend"]:
                     to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
                     continue
@@ -965,13 +966,14 @@ class RotatorEngine:
                     to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
                     continue
 
-            # 2. Strong Reversal Exit Check (Bypasses min_hold)
-            if pos["direction"] == "LONG" and score <= -self.entry_thr:
-                to_close.append((symbol, "STRONG_REVERSAL", price, False))
-                continue
-            if pos["direction"] == "SHORT" and score >= self.entry_thr:
-                to_close.append((symbol, "STRONG_REVERSAL", price, False))
-                continue
+            # 2. Strong Reversal Exit Check (skip on bar 0, Bypasses min_hold otherwise)
+            if pos.get("bars_held", 0) >= 1:
+                if pos["direction"] == "LONG" and score <= -self.entry_thr:
+                    to_close.append((symbol, "STRONG_REVERSAL", price, False))
+                    continue
+                if pos["direction"] == "SHORT" and score >= self.entry_thr:
+                    to_close.append((symbol, "STRONG_REVERSAL", price, False))
+                    continue
 
             pos["bars_held"] += 1
             pos["score"] = score
@@ -992,16 +994,19 @@ class RotatorEngine:
                 pos["progress"] = max(0.0, min(100.0, round(prog, 2)))
 
             # Rule A: hard position drawdown stop
-            asset_ret  = ret
-            max_pos_dd = -self.max_pos_dd_mult / lev
-            if asset_ret < max_pos_dd:
+            # max_pos_dd_mult is a fraction of margin (e.g. 0.06 = 6% of margin lost)
+            # ret is already (price-entry)/entry, so margin*lev*ret = dollar PnL
+            # We close if dollar PnL < -(max_pos_dd_mult * margin)
+            max_pos_dd_dollar = -self.max_pos_dd_mult * margin
+            dollar_pnl = margin * lev * ret
+            if dollar_pnl < max_pos_dd_dollar:
                 to_close.append((symbol, "MAX_POS_DD", price, True)); continue
 
-            # Rule B: trailing stop
+            # Rule B: trailing stop (close at current price, trail_stop is the trigger)
             if direction == "LONG"  and low  <= pos["trail_stop"]:
-                to_close.append((symbol, "STOP_LOSS", pos["trail_stop"], True)); continue
+                to_close.append((symbol, "STOP_LOSS", price, True)); continue
             if direction == "SHORT" and high >= pos["trail_stop"]:
-                to_close.append((symbol, "STOP_LOSS", pos["trail_stop"], True)); continue
+                to_close.append((symbol, "STOP_LOSS", price, True)); continue
 
             # Rule D: take profit
             if target_dist > 0:
@@ -1034,9 +1039,11 @@ class RotatorEngine:
                 if not t: continue
                 price = t.get("last") or t.get("close")
                 if not price: continue
-                high = price
-                low  = price
-                self._update_trailing_stop(pos, price, high, low, pos["atr"])
+                high = t.get("high") or price
+                low  = t.get("low")  or price
+                # NOTE: Do NOT call _update_trailing_stop here — tick-level highs/lows
+                # corrupt the ATR-based trailing stop. Trail stop advances only in manage_positions()
+                # using proper OHLC candles.
                 pos["current_price"] = price
                 direction = pos["direction"]; entry = pos["entry"]; margin = pos["margin"]
                 ret = ((price-entry)/entry) if direction=="LONG" else ((entry-price)/entry)
@@ -1049,13 +1056,14 @@ class RotatorEngine:
                     prog = (((price-entry)/target_dist) if direction=="LONG"
                             else ((entry-price)/target_dist)) * 100.0
                     pos["progress"] = max(0.0, min(100.0, round(prog, 2)))
-                max_pos_dd = -self.max_pos_dd_mult / lev
-                if ret < max_pos_dd:
+                max_pos_dd_dollar = -self.max_pos_dd_mult * pos["margin"]
+                dollar_pnl_rt = pos["margin"] * lev * ret
+                if dollar_pnl_rt < max_pos_dd_dollar:
                     to_close.append((sym, "MAX_POS_DD", price, True)); continue
                 if direction == "LONG"  and low  <= pos["trail_stop"]:
-                    to_close.append((sym, "STOP_LOSS", pos["trail_stop"], True)); continue
+                    to_close.append((sym, "STOP_LOSS", price, True)); continue
                 if direction == "SHORT" and high >= pos["trail_stop"]:
-                    to_close.append((sym, "STOP_LOSS", pos["trail_stop"], True)); continue
+                    to_close.append((sym, "STOP_LOSS", price, True)); continue
                 if target_dist > 0:
                     tp_price = entry + target_dist if direction == "LONG" else entry - target_dist
                     if direction == "LONG" and high >= tp_price:
