@@ -871,6 +871,7 @@ class RotatorEngine:
             "score":       candidate["score"],
             "margin":      margin,
             "notional":    notional,
+            "leverage":    self.leverage,
             "trail_stop":  trail_stop,
             "atr":         atr_val,
             "bars_held":   0,
@@ -891,10 +892,11 @@ class RotatorEngine:
         pos = self.open_positions.pop(symbol)
         direction = pos["direction"]
         entry     = pos["entry"]
+        lev       = pos.get("leverage", self.leverage)
         ret = ((price - entry) / entry) if direction == "LONG" else ((entry - price) / entry)
-        gross  = pos["margin"] * self.leverage * ret
-        fees   = pos["margin"] * self.leverage * self.MAKER_FEE
-        fund   = pos["margin"] * self.leverage * self.FUNDING_RATE_8H * (pos["bars_held"] / 32)
+        gross  = pos["margin"] * lev * ret
+        fees   = pos["margin"] * lev * self.MAKER_FEE
+        fund   = pos["margin"] * lev * self.FUNDING_RATE_8H * (pos["bars_held"] / 32)
         pnl    = gross - fees - fund
 
         if not self.paper_trading:
@@ -940,41 +942,46 @@ class RotatorEngine:
             self.close_position(symbol, reason, price)
 
     def manage_positions(self, latest_scores: list):
-        score_map = {item["symbol"]: item for item in latest_scores}
         to_close  = []
 
         for symbol, pos in list(self.open_positions.items()):
-            current = score_map.get(symbol)
-            if not current:
-                df = self._safe_fetch(symbol)
-                if df is None:
+            df = self._safe_fetch(symbol)
+            if df is None or len(df) < 1:
+                continue
+            df   = self._add_features(df)
+            last = df.iloc[-1]
+            price   = float(last["close"])
+            high    = float(last["high"])
+            low     = float(last["low"])
+            atr_val = float(last["atr_sl"]) if "atr_sl" in last else pos["atr"]
+            score   = float(last["composite_score"])
+
+            # 1. EMA Trend Filter Check (Checked on ALL open positions)
+            if self.use_ema_filter:
+                if pos["direction"] == "LONG"  and price < last["ema_trend"]:
+                    to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
                     continue
-                df   = self._add_features(df)
-                last = df.iloc[-1]
-                price   = float(last["close"])
-                high    = float(last["high"])
-                low     = float(last["low"])
-                atr_val = float(last["atr_sl"]) if "atr_sl" in last else pos["atr"]
-                score   = float(last["composite_score"])
-                if self.use_ema_filter:
-                    if pos["direction"] == "LONG"  and price < last["ema_trend"]:
-                        to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
-                        continue
-                    if pos["direction"] == "SHORT" and price > last["ema_trend"]:
-                        to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
-                        continue
-            else:
-                price = current["price"]; high = current["high"]
-                low   = current["low"];   atr_val = current["atr"]; score = current["score"]
+                if pos["direction"] == "SHORT" and price > last["ema_trend"]:
+                    to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
+                    continue
+
+            # 2. Strong Reversal Exit Check (Bypasses min_hold)
+            if pos["direction"] == "LONG" and score <= -self.entry_thr:
+                to_close.append((symbol, "STRONG_REVERSAL", price, False))
+                continue
+            if pos["direction"] == "SHORT" and score >= self.entry_thr:
+                to_close.append((symbol, "STRONG_REVERSAL", price, False))
+                continue
 
             pos["bars_held"] += 1
             pos["score"] = score
             self._update_trailing_stop(pos, price, high, low, atr_val)
 
             direction = pos["direction"]; entry = pos["entry"]; margin = pos["margin"]
+            lev = pos.get("leverage", self.leverage)
             ret = ((price - entry) / entry) if direction == "LONG" else ((entry - price) / entry)
             pos["current_price"] = price
-            pos["pnl"]     = round(margin * self.leverage * ret, 4)
+            pos["pnl"]     = round(margin * lev * ret, 4)
             pos["pnl_pct"] = round(ret * 100.0, 2)
 
             risk_dist   = self.atr_sl_mult * pos["atr"]
@@ -986,7 +993,7 @@ class RotatorEngine:
 
             # Rule A: hard position drawdown stop
             asset_ret  = ret
-            max_pos_dd = -self.max_pos_dd_mult / self.leverage
+            max_pos_dd = -self.max_pos_dd_mult / lev
             if asset_ret < max_pos_dd:
                 to_close.append((symbol, "MAX_POS_DD", price, True)); continue
 
@@ -1004,7 +1011,7 @@ class RotatorEngine:
                 if direction == "SHORT" and low <= tp_price:
                     to_close.append((symbol, "TAKE_PROFIT", tp_price, True)); continue
 
-            # Rule C: signal fade
+            # Rule C: normal signal fade (Respects min_hold)
             if pos["bars_held"] >= self.min_hold:
                 if direction == "LONG"  and score < 0.0:
                     to_close.append((symbol, "SIGNAL_FADE", price, False)); continue
@@ -1033,7 +1040,8 @@ class RotatorEngine:
                 pos["current_price"] = price
                 direction = pos["direction"]; entry = pos["entry"]; margin = pos["margin"]
                 ret = ((price-entry)/entry) if direction=="LONG" else ((entry-price)/entry)
-                pos["pnl"]     = round(margin * self.leverage * ret, 4)
+                lev = pos.get("leverage", self.leverage)
+                pos["pnl"]     = round(margin * lev * ret, 4)
                 pos["pnl_pct"] = round(ret * 100.0, 2)
                 risk_dist   = self.atr_sl_mult * pos["atr"]
                 target_dist = self.take_profit_rr * risk_dist
@@ -1041,7 +1049,7 @@ class RotatorEngine:
                     prog = (((price-entry)/target_dist) if direction=="LONG"
                             else ((entry-price)/target_dist)) * 100.0
                     pos["progress"] = max(0.0, min(100.0, round(prog, 2)))
-                max_pos_dd = -self.max_pos_dd_mult / self.leverage
+                max_pos_dd = -self.max_pos_dd_mult / lev
                 if ret < max_pos_dd:
                     to_close.append((sym, "MAX_POS_DD", price, True)); continue
                 if direction == "LONG"  and low  <= pos["trail_stop"]:
