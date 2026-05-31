@@ -1028,57 +1028,56 @@ class RotatorEngine:
                 self.close_position(sym, reason, price, cd)
 
     def update_prices_realtime(self):
+        """DISPLAY-ONLY update every 3 seconds.
+
+        Updates current_price, pnl, pnl_pct and progress for the UI.
+        NO exit logic runs here.
+
+        CRITICAL: ticker.high / ticker.low are 24-HOUR values from the exchange,
+        not the current candle range. Using them for stop/TP checks causes
+        instant false exits every time a position is opened. All exit decisions
+        (STOP_LOSS, TAKE_PROFIT, TREND_FILTER_EXIT, etc.) run exclusively in
+        manage_positions() every 60 s using real OHLC candle data.
+        """
         if not self.open_positions:
             return
         try:
             ccxt_syms = [self._to_ccxt(s) for s in self.open_positions]
-            tickers = self.exchange.fetch_tickers(ccxt_syms)
-            to_close = []
+            tickers   = self.exchange.fetch_tickers(ccxt_syms)
+
             for sym, pos in list(self.open_positions.items()):
                 t = tickers.get(self._to_ccxt(sym))
-                if not t: continue
+                if not t:
+                    continue
                 price = t.get("last") or t.get("close")
-                if not price: continue
-                high = t.get("high") or price
-                low  = t.get("low")  or price
-                # NOTE: Do NOT call _update_trailing_stop here — tick-level highs/lows
-                # corrupt the ATR-based trailing stop. Trail stop advances only in manage_positions()
-                # using proper OHLC candles.
+                if not price:
+                    continue
+
                 pos["current_price"] = price
-                direction = pos["direction"]; entry = pos["entry"]; margin = pos["margin"]
-                ret = ((price-entry)/entry) if direction=="LONG" else ((entry-price)/entry)
-                lev = pos.get("leverage", self.leverage)
+                direction = pos["direction"]
+                entry     = pos["entry"]
+                margin    = pos["margin"]
+                lev       = pos.get("leverage", self.leverage)
+                ret       = ((price - entry) / entry) if direction == "LONG" else ((entry - price) / entry)
                 pos["pnl"]     = round(margin * lev * ret, 4)
                 pos["pnl_pct"] = round(ret * 100.0, 2)
+
                 risk_dist   = self.atr_sl_mult * pos["atr"]
                 target_dist = self.take_profit_rr * risk_dist
                 if target_dist > 0:
-                    prog = (((price-entry)/target_dist) if direction=="LONG"
-                            else ((entry-price)/target_dist)) * 100.0
+                    prog = (((price - entry) / target_dist) if direction == "LONG"
+                            else ((entry - price) / target_dist)) * 100.0
                     pos["progress"] = max(0.0, min(100.0, round(prog, 2)))
-                max_pos_dd_dollar = -self.max_pos_dd_mult * pos["margin"]
-                dollar_pnl_rt = pos["margin"] * lev * ret
-                if dollar_pnl_rt < max_pos_dd_dollar:
-                    to_close.append((sym, "MAX_POS_DD", price, True)); continue
-                if direction == "LONG"  and low  <= pos["trail_stop"]:
-                    to_close.append((sym, "STOP_LOSS", price, True)); continue
-                if direction == "SHORT" and high >= pos["trail_stop"]:
-                    to_close.append((sym, "STOP_LOSS", price, True)); continue
-                if target_dist > 0:
-                    tp_price = entry + target_dist if direction == "LONG" else entry - target_dist
-                    if direction == "LONG" and high >= tp_price:
-                        to_close.append((sym, "TAKE_PROFIT", tp_price, True)); continue
-                    if direction == "SHORT" and low <= tp_price:
-                        to_close.append((sym, "TAKE_PROFIT", tp_price, True)); continue
-            for sym, reason, price, cd in to_close:
-                if sym in self.open_positions:
-                    self.close_position(sym, reason, price, cd)
-            equity = self.balance + sum(p["margin"] + p["pnl"] for p in self.open_positions.values())
+
+            equity = self.balance + sum(
+                p["margin"] + p.get("pnl", 0.0) for p in self.open_positions.values()
+            )
             self.peak_balance = max(self.peak_balance, equity)
             dd = (self.peak_balance - equity) / self.peak_balance if self.peak_balance > 0 else 0.0
             self.save_state(equity, dd * 100.0, candidates=None)
         except Exception as e:
             print(f"[rotator] realtime price update error: {e}")
+
 
     def rotate_positions(self, candidates: list):
         valid = [c for c in candidates
