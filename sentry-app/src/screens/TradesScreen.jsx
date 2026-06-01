@@ -1,3 +1,4 @@
+import { useState } from "react";
 import useTradeHistory from "../hooks/useTradeHistory";
 import { RefreshCw } from "lucide-react";
 
@@ -25,6 +26,7 @@ function StatCard({ label, value, positive }) {
 
 export default function TradesScreen() {
   const { trades, stats, loading, refresh } = useTradeHistory();
+  const [visibleCount, setVisibleCount] = useState(20);
 
   const formatPrice = (price) => {
     if (price == null) return "—";
@@ -91,78 +93,89 @@ export default function TradesScreen() {
           No closed trades yet.
         </div>
       ) : (
-        trades.map((trade) => (
-          <div
-            key={trade.id}
-            className="rounded-[24px] bg-white p-4 shadow-sm"
-          >
-            <div className="flex justify-between">
-              <div>
-                <p className="font-semibold text-base">
-                  {trade.symbol}
-                </p>
+        <>
+          {trades.slice(0, visibleCount).map((trade) => (
+            <div
+              key={trade.id}
+              className="rounded-[24px] bg-white p-4 shadow-sm"
+            >
+              <div className="flex justify-between">
+                <div>
+                  <p className="font-semibold text-base">
+                    {trade.symbol}
+                  </p>
 
-                <p className={`text-xs font-bold mt-0.5 ${
-                  trade.side?.toUpperCase() === "LONG" ? "text-green-600" : "text-red-500"
-                }`}>
-                  {trade.side}
-                </p>
+                  <p className={`text-xs font-bold mt-0.5 ${
+                    trade.side?.toUpperCase() === "LONG" ? "text-green-600" : "text-red-500"
+                  }`}>
+                    {trade.side}
+                  </p>
+                </div>
+
+                <div
+                  className={
+                    trade.pnl >= 0
+                      ? "text-right font-bold text-base text-green-600"
+                      : "text-right font-bold text-base text-red-500"
+                  }
+                >
+                  {trade.pnl >= 0 ? "+" : ""}${Number(trade.pnl || 0).toFixed(4)}
+                </div>
               </div>
 
-              <div
-                className={
-                  trade.pnl >= 0
-                    ? "text-right font-bold text-base text-green-600"
-                    : "text-right font-bold text-base text-red-500"
-                }
-              >
-                {trade.pnl >= 0 ? "+" : ""}${Number(trade.pnl || 0).toFixed(4)}
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-2xl bg-zinc-50 p-3">
+                  <p className="text-xs text-zinc-500">
+                    Entry
+                  </p>
+                  <p className="font-semibold text-zinc-800 mt-0.5">
+                    {formatPrice(trade.entry_price)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-zinc-50 p-3">
+                  <p className="text-xs text-zinc-500">
+                    Exit
+                  </p>
+                  <p className="font-semibold text-zinc-800 mt-0.5">
+                    {formatPrice(trade.exit_price)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-zinc-50 p-3">
+                  <p className="text-xs text-zinc-500">
+                    Reason
+                  </p>
+                  <p className="font-semibold text-zinc-800 mt-0.5 capitalize">
+                    {trade.reason?.toLowerCase().replace("_", " ") || "UNKNOWN"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-zinc-50 p-3">
+                  <p className="text-xs text-zinc-500">
+                    Held
+                  </p>
+                  <p className="font-semibold text-zinc-800 mt-0.5">
+                    {trade.bars_held || 0} bars
+                  </p>
+                </div>
               </div>
+
+              <p className="mt-3 text-[10px] text-zinc-400">
+                {trade.closed_at}
+              </p>
             </div>
+          ))}
 
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-2xl bg-zinc-50 p-3">
-                <p className="text-xs text-zinc-500">
-                  Entry
-                </p>
-                <p className="font-semibold text-zinc-800 mt-0.5">
-                  {formatPrice(trade.entry_price)}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-zinc-50 p-3">
-                <p className="text-xs text-zinc-500">
-                  Exit
-                </p>
-                <p className="font-semibold text-zinc-800 mt-0.5">
-                  {formatPrice(trade.exit_price)}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-zinc-50 p-3">
-                <p className="text-xs text-zinc-500">
-                  Reason
-                </p>
-                <p className="font-semibold text-zinc-800 mt-0.5 capitalize">
-                  {trade.reason?.toLowerCase().replace("_", " ") || "UNKNOWN"}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-zinc-50 p-3">
-                <p className="text-xs text-zinc-500">
-                  Held
-                </p>
-                <p className="font-semibold text-zinc-800 mt-0.5">
-                  {trade.bars_held || 0} bars
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-3 text-[10px] text-zinc-400">
-              {trade.closed_at}
-            </p>
-          </div>
-        ))
+          {trades.length > visibleCount && (
+            <button
+              onClick={() => setVisibleCount((prev) => prev + 20)}
+              className="w-full rounded-2xl border-2 border-zinc-100 hover:border-zinc-200 bg-white p-4 font-semibold text-[#FF6B35] text-sm shadow-sm transition active:scale-[0.98] transform duration-100"
+            >
+              Load More Trades
+            </button>
+          )}
+        </>
       )}
     </div>
   );

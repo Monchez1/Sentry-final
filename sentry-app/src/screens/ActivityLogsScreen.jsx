@@ -1,7 +1,9 @@
+import { useState } from "react";
 import useActivityLogs from "../hooks/useActivityLogs";
 
 export default function ActivityLogsScreen() {
   const { logs } = useActivityLogs();
+  const [visibleCount, setVisibleCount] = useState(20);
 
   return (
     <div className="p-5 space-y-4">
@@ -11,7 +13,7 @@ export default function ActivityLogsScreen() {
         </h1>
       </div>
 
-      {logs.map((log) => (
+      {logs.slice(0, visibleCount).map((log) => (
         <div
           key={log.id}
           className="rounded-[24px] bg-white p-4 shadow-sm"
@@ -29,6 +31,15 @@ export default function ActivityLogsScreen() {
           </p>
         </div>
       ))}
+
+      {logs.length > visibleCount && (
+        <button
+          onClick={() => setVisibleCount((prev) => prev + 20)}
+          className="w-full rounded-2xl border-2 border-zinc-100 hover:border-zinc-200 bg-white p-4 font-semibold text-[#FF6B35] text-sm shadow-sm transition active:scale-[0.98] transform duration-100"
+        >
+          Load More Logs
+        </button>
+      )}
     </div>
   );
 }

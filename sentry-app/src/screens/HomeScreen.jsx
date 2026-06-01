@@ -203,63 +203,28 @@ export default function HomeScreen() {
   );
 }
 
-/* ── Animated helpers ─────────────────────────────────────── */
+/* ── Rendering helpers ─────────────────────────────────────── */
 
-function AnimatedNumber({ value, decimals = 2, durationMs = 600 }) {
-  const animated = useAnimatedValue(Number(value) || 0, decimals, durationMs);
-  return <>{animated.toFixed(decimals)}</>;
+function AnimatedNumber({ value, decimals = 2 }) {
+  const num = Number(value);
+  return <>{isNaN(num) ? "0.00" : num.toFixed(decimals)}</>;
 }
 
 function AnimatedDollar({ value, decimals = 2 }) {
-  const animated = useAnimatedValue(Number(value) || 0, decimals);
-  return <>${animated.toFixed(decimals)}</>;
+  const num = Number(value);
+  return <>${isNaN(num) ? "0.00" : num.toFixed(decimals)}</>;
 }
 
 function PnlLine({ value, pct }) {
-  const animVal = useAnimatedValue(Number(value) || 0, 4);
-  const animPct = useAnimatedValue(Number(pct)  || 0, 2);
-  const positive = animVal >= 0;
+  const numVal = Number(value) || 0;
+  const numPct = Number(pct) || 0;
+  const positive = numVal >= 0;
   return (
     <p className={`mt-2 tabular-nums text-sm font-semibold transition-colors duration-300 ${positive ? "text-green-600" : "text-red-500"}`}>
-      {positive ? "+" : ""}${animVal.toFixed(4)}&nbsp;
+      {positive ? "+" : ""}${numVal.toFixed(4)}&nbsp;
       <span className="text-xs font-normal opacity-70">
-        ({positive ? "+" : ""}{animPct.toFixed(2)}%)
+        ({positive ? "+" : ""}{numPct.toFixed(2)}%)
       </span>
     </p>
   );
-}
-
-function useAnimatedValue(target, decimals = 2, durationMs = 600) {
-  const [display, setDisplay] = useState(target);
-  const frameRef = useRef(null);
-  const startRef = useRef(null);
-  const fromRef  = useRef(target);
-
-  useEffect(() => {
-    const from = fromRef.current;
-    const to   = Number(target);
-    if (Math.abs(to - from) < Math.pow(10, -decimals) / 2) return;
-
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    startRef.current = null;
-
-    const step = (ts) => {
-      if (!startRef.current) startRef.current = ts;
-      const progress = Math.min((ts - startRef.current) / durationMs, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      const current = from + (to - from) * ease;
-      setDisplay(current);
-      if (progress < 1) {
-        frameRef.current = requestAnimationFrame(step);
-      } else {
-        fromRef.current = to;
-        setDisplay(to);
-      }
-    };
-
-    frameRef.current = requestAnimationFrame(step);
-    return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current); };
-  }, [target, decimals, durationMs]);
-
-  return display;
 }
