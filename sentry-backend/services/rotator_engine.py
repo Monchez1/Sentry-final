@@ -829,6 +829,25 @@ class RotatorEngine:
             else:
                 pos["trail_stop"] = entry + self.atr_sl_mult * atr_val
 
+        # --- Dynamic Breakeven & Profit Locking ---
+        direction = pos["direction"]
+        entry = pos["entry"]
+        risk_dist = self.atr_sl_mult * atr_val
+        target_dist = self.take_profit_rr * risk_dist
+
+        if target_dist > 0:
+            peak_or_trough = pos["peak_price"] if direction == "LONG" else pos["trough_price"]
+            dist_moved = (peak_or_trough - entry) if direction == "LONG" else (entry - peak_or_trough)
+            peak_progress = (dist_moved / target_dist) * 100.0
+
+            if peak_progress >= 70.0:
+                # Lock in 30% of target profit
+                lock_in = entry + (0.30 * target_dist) if direction == "LONG" else entry - (0.30 * target_dist)
+                pos["trail_stop"] = max(pos["trail_stop"], lock_in) if direction == "LONG" else min(pos["trail_stop"], lock_in)
+            elif peak_progress >= 50.0:
+                # Lock in breakeven (entry price)
+                pos["trail_stop"] = max(pos["trail_stop"], entry) if direction == "LONG" else min(pos["trail_stop"], entry)
+
     def open_position(self, candidate):
         symbol    = candidate["symbol"]
         direction = candidate["direction"]
