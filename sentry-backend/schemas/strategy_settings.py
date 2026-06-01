@@ -21,6 +21,8 @@ class StrategySettingsPayload(BaseModel):
     use_perf_multipliers: bool = False
     paper_trading: bool = True
     paper_start_balance: float = 10.0
+    use_ml_filter: bool = False
+    ml_prob_thr: float = 0.55
 
 
 

@@ -95,6 +95,10 @@ class RotatorEngine:
         self.use_telescoping_leverage: bool = False
         self.use_perf_multipliers: bool = False
         self.paper_trading: bool = True
+        self.use_ml_filter: bool = False
+        self.ml_prob_thr: float = 0.55
+        self.rf_model = None
+        self.rf_model_loaded: bool = False
 
         # Score weights
         self.W_RSI: float = 0.0
@@ -165,6 +169,7 @@ class RotatorEngine:
                 strat.take_profit_rr, strat.cooldown_scans, strat.timeframe,
                 strat.use_ema_filter, strat.alloc_ratio, strat.use_telescoping_leverage,
                 strat.use_perf_multipliers, strat.paper_trading, strat.paper_start_balance,
+                getattr(strat, "use_ml_filter", False), getattr(strat, "ml_prob_thr", 0.55),
             ))
             if settings_hash == self._last_settings_hash:
                 return  # nothing changed
@@ -187,6 +192,11 @@ class RotatorEngine:
             self.use_perf_multipliers      = bool(strat.use_perf_multipliers)
             self.paper_trading             = bool(strat.paper_trading)
             self.paper_start_balance       = float(strat.paper_start_balance or 10.0)
+            self.use_ml_filter             = bool(getattr(strat, "use_ml_filter", False))
+            self.ml_prob_thr               = float(getattr(strat, "ml_prob_thr", 0.55))
+
+            if self.use_ml_filter:
+                self.load_ml_model()
 
             if risk:
                 self.cb_dd                          = float(risk.emergency_stop_pct or 0.35) * 100.0
@@ -233,6 +243,31 @@ class RotatorEngine:
             print(f"[rotator] load_config error: {e}")
         finally:
             db.close()
+
+    def load_ml_model(self):
+        import os
+        try:
+            import joblib
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            model_path = os.path.join(base_dir, "model.joblib")
+            if os.path.exists(model_path):
+                self.rf_model = joblib.load(model_path)
+                self.rf_model_loaded = True
+                print(f"✅ Cloud Engine: Loaded ML model from {model_path}")
+            else:
+                local_path = "/home/kenyatta/sentry/runtime/model.joblib"
+                if os.path.exists(local_path):
+                    self.rf_model = joblib.load(local_path)
+                    self.rf_model_loaded = True
+                    print(f"✅ Cloud Engine: Loaded local ML model from {local_path}")
+                else:
+                    print(f"⚠️ Cloud Engine: ML model not found at {model_path} or {local_path}")
+                    self.rf_model = None
+                    self.rf_model_loaded = False
+        except Exception as e:
+            print(f"❌ Cloud Engine: Error loading ML model: {e}")
+            self.rf_model = None
+            self.rf_model_loaded = False
 
     # ──────────────────────────────────────────────────────────────────────
     # State persistence (DB)
@@ -744,6 +779,42 @@ class RotatorEngine:
         if self.use_ema_filter:
             if direction == "LONG"  and last["close"] < last["ema_trend"]: return None
             if direction == "SHORT" and last["close"] > last["ema_trend"]: return None
+
+        if self.use_ml_filter and self.rf_model_loaded and abs(score) >= self.entry_thr:
+            try:
+                df_ml = df.copy()
+                df_ml["close_pct_change"] = df_ml["close"].pct_change()
+                df_ml["dist_ema200"] = (df_ml["close"] - df_ml["ema_200"]) / (df_ml["ema_200"] + 1e-9)
+                df_ml["dist_ematrend"] = (df_ml["close"] - df_ml["ema_trend"]) / (df_ml["ema_trend"] + 1e-9)
+                
+                for col in ["composite_score", "mom_score", "st_score", "rsi_score", "spread", "boost_vol"]:
+                    for lag in [1, 2, 3]:
+                        df_ml[f"{col}_lag_{lag}"] = df_ml[col].shift(lag)
+                        
+                last_row = df_ml.iloc[-1]
+                
+                feature_cols = [
+                    "composite_score", "mom_score", "st_score", "rsi_score", "spread", "boost_vol",
+                    "close_pct_change", "dist_ema200", "dist_ematrend",
+                    "composite_score_lag_1", "composite_score_lag_2", "composite_score_lag_3",
+                    "mom_score_lag_1", "mom_score_lag_2", "mom_score_lag_3",
+                    "st_score_lag_1", "st_score_lag_2", "st_score_lag_3",
+                    "rsi_score_lag_1", "rsi_score_lag_2", "rsi_score_lag_3",
+                    "spread_lag_1", "spread_lag_2", "spread_lag_3",
+                    "boost_vol_lag_1", "boost_vol_lag_2", "boost_vol_lag_3"
+                ]
+                
+                feats = [last_row[c] for c in feature_cols]
+                if not any(pd.isna(val) for val in feats):
+                    prob = self.rf_model.predict_proba([feats])[0][1]
+                    print(f"🤖 Cloud Engine ML evaluation for {symbol}: Success Probability = {prob:.4f} (Threshold: {self.ml_prob_thr})")
+                    if prob < self.ml_prob_thr:
+                        print(f"🚫 Cloud Engine ML FILTER: Rejected {symbol} entry signal (Prob {prob:.4f} < {self.ml_prob_thr})")
+                        return None
+                else:
+                    print(f"⚠️ Cloud Engine ML filter warning for {symbol}: features contain NaN. Skipping filter check.")
+            except Exception as e:
+                print(f"Cloud Engine: Error evaluating ML signal filter for {symbol}: {e}")
         return {
             "symbol":    symbol,
             "score":     round(float(score), 4),

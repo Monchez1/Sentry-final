@@ -42,6 +42,8 @@ class StrategySettings(Base):
     use_perf_multipliers = Column(Boolean, default=False)
     paper_trading = Column(Boolean, default=True)
     paper_start_balance = Column(Float, default=10.0)
+    use_ml_filter = Column(Boolean, default=False)
+    ml_prob_thr = Column(Float, default=0.55)
 
 
 

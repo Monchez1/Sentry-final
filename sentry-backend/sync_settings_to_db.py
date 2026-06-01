@@ -37,6 +37,11 @@ def main():
             strat.alloc_ratio = float(settings.get("alloc_ratio", 0.25))
             strat.use_telescoping_leverage = bool(settings.get("use_telescoping_leverage", False))
             strat.profile = settings.get("profile", "balanced")
+            strat.use_perf_multipliers = bool(settings.get("use_perf_multipliers", False))
+            strat.paper_trading = bool(settings.get("paper_trading", True))
+            strat.paper_start_balance = float(settings.get("paper_start_balance", 10.0))
+            strat.use_ml_filter = bool(settings.get("use_ml_filter", False))
+            strat.ml_prob_thr = float(settings.get("ml_prob_thr", 0.55))
             
             db.commit()
             print("✅ Successfully synchronized strategy settings from settings.json to PostgreSQL database!")

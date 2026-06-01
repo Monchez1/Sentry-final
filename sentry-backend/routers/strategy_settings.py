@@ -67,6 +67,9 @@ def save_settings(
     settings.profile = payload.profile
     settings.use_perf_multipliers = payload.use_perf_multipliers
     settings.paper_trading = payload.paper_trading
+    settings.paper_start_balance = payload.paper_start_balance
+    settings.use_ml_filter = payload.use_ml_filter
+    settings.ml_prob_thr = payload.ml_prob_thr
 
     db.commit()
 

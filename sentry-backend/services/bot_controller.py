@@ -89,6 +89,8 @@ def export_settings_from_db(telegram_id: str = None):
                 "use_perf_multipliers":      bool(strat.use_perf_multipliers)      if strat.use_perf_multipliers     is not None else False,
                 "paper_trading":             bool(strat.paper_trading)             if strat.paper_trading            is not None else True,
                 "paper_start_balance":       float(strat.paper_start_balance)      if strat.paper_start_balance      is not None else 10.0,
+                "use_ml_filter":             bool(strat.use_ml_filter)             if strat.use_ml_filter            is not None else False,
+                "ml_prob_thr":               float(strat.ml_prob_thr)              if strat.ml_prob_thr              is not None else 0.55,
             })
             if not strat.paper_trading:
                 exchange_row = (

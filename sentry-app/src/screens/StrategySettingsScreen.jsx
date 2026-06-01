@@ -63,6 +63,8 @@ const PRESETS = {
     auto_rotation: true,
     entry_thr: 0.5,
     use_perf_multipliers: false,
+    use_ml_filter: false,
+    ml_prob_thr: 0.55,
   },
   balanced: {
     profile: "balanced",
@@ -83,6 +85,8 @@ const PRESETS = {
     auto_rotation: true,
     entry_thr: 0.4,
     use_perf_multipliers: false,
+    use_ml_filter: false,
+    ml_prob_thr: 0.55,
   },
   hyper: {
     profile: "hyper",
@@ -103,6 +107,8 @@ const PRESETS = {
     auto_rotation: true,
     entry_thr: 0.4,
     use_perf_multipliers: false,
+    use_ml_filter: false,
+    ml_prob_thr: 0.55,
   },
   scalper: {
     profile: "scalper",
@@ -123,6 +129,8 @@ const PRESETS = {
     auto_rotation: true,
     entry_thr: 0.35,
     use_perf_multipliers: false,
+    use_ml_filter: false,
+    ml_prob_thr: 0.55,
   }
 };
 
@@ -180,6 +188,8 @@ export default function StrategySettingsScreen() {
         use_perf_multipliers: Boolean(form.use_perf_multipliers),
         paper_trading: form.paper_trading !== undefined ? Boolean(form.paper_trading) : true,
         paper_start_balance: Number(form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0),
+        use_ml_filter: Boolean(form.use_ml_filter),
+        ml_prob_thr: Number(form.ml_prob_thr !== undefined ? form.ml_prob_thr : 0.55),
       });
 
       toast.success("Strategy settings saved");
@@ -474,6 +484,35 @@ export default function StrategySettingsScreen() {
                 <span className="text-xs text-zinc-500 block mt-0.5">Adjusts: 20x (&lt;$50) &rarr; 10x (&lt;$500) &rarr; 3x (&ge;$500)</span>
               </div>
             </label>
+          </div>
+
+          {/* Group 4: Machine Learning Filter */}
+          <div className="space-y-4 rounded-[28px] bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-bold text-[#FF6B35] mb-2 border-b pb-2">Machine Learning (ML) Filter</h2>
+            
+            <label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 cursor-pointer hover:bg-zinc-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={form.use_ml_filter || false}
+                onChange={(e) => handleFieldChange("use_ml_filter", e.target.checked)}
+                className="w-5 h-5 rounded accent-[#FF6B35]"
+              />
+              <div>
+                <span className="font-semibold text-zinc-700 block">Enable ML Signal Filter</span>
+                <span className="text-xs text-zinc-500 block mt-0.5">
+                  Filters out false breakout trade candidates using a trained Random Forest model. Rejects entry signals with predicted success probability below the threshold.
+                </span>
+              </div>
+            </label>
+
+            {form.use_ml_filter && (
+              <Field
+                label="ML Probability Success Threshold"
+                step="0.01"
+                value={form.ml_prob_thr !== undefined ? form.ml_prob_thr : 0.55}
+                onChange={(e) => handleFieldChange("ml_prob_thr", e.target.value)}
+              />
+            )}
           </div>
         </>
       )}
