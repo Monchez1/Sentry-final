@@ -866,9 +866,11 @@ class RotatorEngine:
         equity = self.balance
         for sym, pos in self.open_positions.items():
             df = self._safe_fetch(sym)
-            if df is None:
-                continue
-            price = float(df["close"].iloc[-1])
+            if df is not None and not df.empty:
+                price = float(df["close"].iloc[-1])
+            else:
+                price = pos.get("current_price") or pos.get("entry")
+            
             entry = pos["entry"]
             ret = ((price - entry) / entry) if pos["direction"] == "LONG" else ((entry - price) / entry)
             lev_pos = pos.get("leverage", self.leverage)
