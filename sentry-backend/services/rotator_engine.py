@@ -1049,14 +1049,7 @@ class RotatorEngine:
             atr_val = float(last["atr_sl"]) if "atr_sl" in last else pos["atr"]
             score   = float(last["composite_score"])
 
-            # 1. EMA Trend Filter Check (skip on bar 0 — just opened this scan)
-            if self.use_ema_filter and pos.get("bars_held", 0) >= 1:
-                if pos["direction"] == "LONG"  and price < last["ema_trend"]:
-                    to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
-                    continue
-                if pos["direction"] == "SHORT" and price > last["ema_trend"]:
-                    to_close.append((symbol, "TREND_FILTER_EXIT", price, False))
-                    continue
+
 
             # 2. Strong Reversal Exit Check (skip on bar 0, Bypasses min_hold otherwise)
             if pos.get("bars_held", 0) >= 1:
