@@ -1,37 +1,38 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { Sliders, Shield, Zap, Sparkles, HelpCircle, Save, Settings, ChevronDown, ChevronUp } from "lucide-react";
 
 import api from "../services/api";
 import useStrategySettings from "../hooks/useStrategySettings";
 
-function Field({ label, value, type = "number", step, onChange }) {
+function Field({ label, value, type = "number", step, onChange, sub }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-zinc-600">
+    <label className="block" style={{ marginBottom: 14 }}>
+      <span style={{ display:"block", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.04em", color:"var(--text-secondary)", marginBottom:6 }}>
         {label}
       </span>
-
       <input
         type={type}
         step={step}
-        value={value}
+        value={value ?? ""}
         onChange={onChange}
-        className="w-full rounded-2xl bg-zinc-50 p-4 outline-none focus:ring-2 focus:ring-[#FF6B35]/30"
+        className="input"
       />
+      {sub && <span style={{ display:"block", fontSize:11, color:"var(--text-muted)", marginTop:4 }}>{sub}</span>}
     </label>
   );
 }
 
 function SelectField({ label, value, options, onChange }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-zinc-600">
+    <label className="block" style={{ marginBottom: 14 }}>
+      <span style={{ display:"block", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.04em", color:"var(--text-secondary)", marginBottom:6 }}>
         {label}
       </span>
       <select
         value={value}
         onChange={onChange}
-        className="w-full rounded-2xl bg-zinc-50 p-4 outline-none focus:ring-2 focus:ring-[#FF6B35]/30 font-semibold text-zinc-800"
+        className="input"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -138,13 +139,26 @@ export default function StrategySettingsScreen() {
   const { settings, refresh } = useStrategySettings();
   const [form, setForm] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (settings) setForm(settings);
   }, [settings]);
 
   if (!form) {
-    return <div className="p-5">Loading...</div>;
+    return (
+      <div>
+        <div className="page-header">
+          <div className="stat-label">Strategy Configuration</div>
+          <h1 style={{ fontSize:22, fontWeight:800 }}>Strategy Settings</h1>
+        </div>
+        <div className="content">
+          <div className="card fade-up">
+            <div className="skeleton" style={{ height:60, width:"100%" }} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const applyPreset = (presetKey) => {
@@ -155,6 +169,7 @@ export default function StrategySettingsScreen() {
       paper_trading: form.paper_trading !== undefined ? form.paper_trading : true,
       paper_start_balance: form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0
     });
+    toast.success(`Applied ${presetKey} preset`);
   };
 
   const handleFieldChange = (field, value) => {
@@ -166,6 +181,7 @@ export default function StrategySettingsScreen() {
   };
 
   const save = async () => {
+    setSaving(true);
     try {
       await api.post("/strategy-settings/", {
         max_positions: Number(form.max_positions),
@@ -197,333 +213,317 @@ export default function StrategySettingsScreen() {
     } catch (err) {
       console.error(err);
       toast.error("Failed to save settings");
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="p-5 space-y-4 max-w-lg mx-auto pb-24">
-      {/* Header */}
-      <div className="rounded-[28px] bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-bold text-zinc-800">Strategy Settings</h1>
-        <p className="mt-2 text-zinc-500 text-sm">Configure SENTRY's rotation, execution, and risk compounding behavior.</p>
-      </div>
-
-      {/* Risk Presets Section */}
-      <div className="space-y-4 rounded-[28px] bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-bold text-zinc-800">Select Risk Profile</h2>
-        <p className="text-zinc-500 text-xs">Choose a pre-configured risk template suitable for your knowledge level.</p>
-
-        <div className="grid grid-cols-1 gap-3 mt-3">
-          {/* Conservative Card */}
-          <button
-            onClick={() => applyPreset("conservative")}
-            className={`text-left p-4 rounded-2xl border-2 transition-all ${
-              form.profile === "conservative"
-                ? "border-[#FF6B35] bg-[#FF6B35]/5"
-                : "border-zinc-100 hover:border-zinc-200 bg-zinc-50/50"
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-zinc-800 flex items-center gap-2">
-                🛡️ Conservative
-              </span>
-              {form.profile === "conservative" && (
-                <span className="text-xs bg-[#FF6B35] text-white px-2 py-0.5 rounded-full font-semibold">Active</span>
-              )}
+    <div>
+      {/* ── Header ───────────────────────────────────────────── */}
+      <div className="page-header">
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--text-muted)", marginBottom:2 }}>
+              Sentry Engine
             </div>
-            <p className="text-zinc-500 text-xs mt-1">Safe, slow growth. Tighter stops, 3x leverage, and lower trade sizing (10% allocation) to preserve capital.</p>
+            <h1 style={{ fontSize:22, fontWeight:800 }}>Strategy</h1>
+          </div>
+          <button className="btn btn-primary" style={{ padding:"10px 16px", borderRadius:12, fontSize:13 }} onClick={save} disabled={saving}>
+            <Save size={14} /> {saving ? "Saving..." : "Save"}
           </button>
-
-          {/* Balanced Card */}
-          <button
-            onClick={() => applyPreset("balanced")}
-            className={`text-left p-4 rounded-2xl border-2 transition-all ${
-              form.profile === "balanced"
-                ? "border-[#FF6B35] bg-[#FF6B35]/5"
-                : "border-zinc-100 hover:border-zinc-200 bg-zinc-50/50"
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-zinc-800 flex items-center gap-2">
-                ⚖️ Balanced
-              </span>
-              {form.profile === "balanced" && (
-                <span className="text-xs bg-[#FF6B35] text-white px-2 py-0.5 rounded-full font-semibold">Active</span>
-              )}
-            </div>
-            <p className="text-zinc-500 text-xs mt-1">Steady growth. Optimized settings with 5x leverage and 20% trade sizing. Balanced momentum tracking.</p>
-          </button>
-
-          {/* Hyper Compounding Card */}
-          <button
-            onClick={() => applyPreset("hyper")}
-            className={`text-left p-4 rounded-2xl border-2 transition-all ${
-              form.profile === "hyper"
-                ? "border-[#FF6B35] bg-[#FF6B35]/5"
-                : "border-zinc-100 hover:border-zinc-200 bg-zinc-50/50"
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-zinc-800 flex items-center gap-2">
-                🔥 Hyper-Compounding
-              </span>
-              {form.profile === "hyper" && (
-                <span className="text-xs bg-[#FF6B35] text-white px-2 py-0.5 rounded-full font-semibold">Active</span>
-              )}
-            </div>
-            <p className="text-zinc-500 text-xs mt-1">Aggressive 300x model. High velocity using 15m candles, 33% trade sizing, tighter stops, and telescoping leverage (up to 20x).</p>
-          </button>
-
-          {/* Scalper Card */}
-          <button
-            onClick={() => applyPreset("scalper")}
-            className={`text-left p-4 rounded-2xl border-2 transition-all ${
-              form.profile === "scalper"
-                ? "border-[#FF6B35] bg-[#FF6B35]/5"
-                : "border-zinc-100 hover:border-zinc-200 bg-zinc-50/50"
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-zinc-800 flex items-center gap-2">
-                ⚡ Scalper
-              </span>
-              {form.profile === "scalper" && (
-                <span className="text-xs bg-[#FF6B35] text-white px-2 py-0.5 rounded-full font-semibold">Active</span>
-              )}
-            </div>
-            <p className="text-zinc-500 text-xs mt-1">High-frequency setups. Trades on 5m charts with tight 2.0 ATR stops, fast 1.5 TP targets, 33% trade compounding, and performance locks disabled for constant setups.</p>
-          </button>
-
-          {/* Custom Card */}
-          {form.profile === "custom" && (
-            <div className="p-4 rounded-2xl border-2 border-zinc-200 bg-zinc-50 text-left">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-zinc-800 flex items-center gap-2">
-                  ⚙️ Custom Configuration
-                </span>
-                <span className="text-xs bg-zinc-600 text-white px-2 py-0.5 rounded-full font-semibold">Active</span>
-              </div>
-              <p className="text-zinc-500 text-xs mt-1">You have modified specific parameters below. Custom settings are active.</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Toggle Advanced */}
-      <div className="flex justify-center">
-        <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm font-semibold text-[#FF6B35] hover:text-[#e05626] transition-colors flex items-center gap-1.5 p-2 rounded-xl bg-white shadow-sm border border-zinc-100 w-full justify-center"
-        >
-          {showAdvanced ? "Hide Advanced Settings ▲" : "Show Advanced Settings (Custom Controls) ▼"}
-        </button>
-      </div>
+      <div className="content">
+        {/* Presets Card */}
+        <div className="card fade-up">
+          <div className="section-title">Risk Profiles</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {[
+              { key: "conservative", title: "🛡️ Conservative", desc: "Safe, slow growth. Tighter stops, 3x leverage, and lower trade sizing (10% allocation) to preserve capital." },
+              { key: "balanced",     title: "⚖️ Balanced",     desc: "Steady growth. Optimized settings with 5x leverage and 20% trade sizing. Balanced momentum tracking." },
+              { key: "hyper",        title: "🚀 Hyper-Compounding", desc: "Aggressive model. High velocity using 15m candles, 33% trade sizing, and telescoping leverage." },
+              { key: "scalper",      title: "⚡ Scalper",      desc: "High-frequency setups. Trades on 5m charts with tight 2.0 ATR stops and fast 1.5 TP targets." }
+            ].map(preset => {
+              const active = form.profile === preset.key;
+              return (
+                <button
+                  key={preset.key}
+                  onClick={() => applyPreset(preset.key)}
+                  style={{
+                    textAlign:"left", padding:"12px 14px", borderRadius:14,
+                    background: active ? "var(--accent-soft)" : "var(--bg-elevated)",
+                    border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    cursor:"pointer", transition:"all 0.15s",
+                  }}
+                >
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontWeight:700, fontSize:14, color: active ? "var(--accent)" : "var(--text-primary)" }}>{preset.title}</span>
+                    {active && <span className="badge badge-accent" style={{ fontSize:9 }}>Active</span>}
+                  </div>
+                  <p style={{ fontSize:11, color:"var(--text-secondary)", marginTop:4, lineHeight:1.3 }}>{preset.desc}</p>
+                </button>
+              );
+            })}
 
-      {showAdvanced && (
-        <>
-          {/* Group 1: Rotator Sizing & Execution */}
-          <div className="space-y-4 rounded-[28px] bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-bold text-[#FF6B35] mb-2 border-b pb-2">Rotator Sizing & Execution</h2>
-            
-            <Field
-              label="Max Positions"
-              value={form.max_positions}
-              onChange={(e) => handleFieldChange("max_positions", e.target.value)}
-            />
-
-            <Field
-              label="Risk Per Trade (Non-compounding)"
-              step="0.01"
-              value={form.risk_per_trade}
-              onChange={(e) => handleFieldChange("risk_per_trade", e.target.value)}
-            />
-
-            <Field
-              label="Rotation Threshold (Score diff to rotate)"
-              step="0.01"
-              value={form.rotation_threshold}
-              onChange={(e) => handleFieldChange("rotation_threshold", e.target.value)}
-            />
-
-            <Field
-              label="Stop Loss %"
-              step="0.001"
-              value={form.stop_loss_pct}
-              onChange={(e) => handleFieldChange("stop_loss_pct", e.target.value)}
-            />
-
-            <Field
-              label="Take Profit Risk-Reward (RR)"
-              step="0.1"
-              value={form.take_profit_rr}
-              onChange={(e) => handleFieldChange("take_profit_rr", e.target.value)}
-            />
-
-            <Field
-              label="Stop-Loss Cooldown (Scans/Minutes)"
-              value={form.cooldown_scans}
-              onChange={(e) => handleFieldChange("cooldown_scans", e.target.value)}
-            />
-
-            <label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 cursor-pointer hover:bg-zinc-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={form.auto_rotation}
-                onChange={(e) => handleFieldChange("auto_rotation", e.target.checked)}
-                className="w-5 h-5 rounded accent-[#FF6B35]"
-              />
-              <span className="font-semibold text-zinc-700">Auto Rotation</span>
-            </label>
-          </div>
-
-          {/* Group 2: Strategy & Signals */}
-          <div className="space-y-4 rounded-[28px] bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-bold text-[#FF6B35] mb-2 border-b pb-2">Strategy & Signals</h2>
-            
-            <SelectField
-              label="Timeframe"
-              value={form.timeframe || "15m"}
-              options={[
-                { label: "1m", value: "1m" },
-                { label: "5m", value: "5m" },
-                { label: "15m", value: "15m" },
-                { label: "1h", value: "1h" },
-                { label: "4h", value: "4h" },
-              ]}
-              onChange={(e) => handleFieldChange("timeframe", e.target.value)}
-            />
-
-            <SelectField
-              label="Strategy Weight Set"
-              value={form.score_set || "balanced_mom"}
-              options={[
-                { label: "Balanced Momentum (10% RSI, 60% ST, 30% MOM)", value: "balanced_mom" },
-                { label: "Standard Trend (0% RSI, 85% ST, 15% MOM)", value: "standard_trend" },
-              ]}
-              onChange={(e) => handleFieldChange("score_set", e.target.value)}
-            />
-
-            <Field
-              label="ATR Stop Multiplier (Risk Width)"
-              step="0.1"
-              value={form.atr_sl_mult || 8.0}
-              onChange={(e) => handleFieldChange("atr_sl_mult", e.target.value)}
-            />
-
-            <Field
-              label="Entry Score Threshold"
-              step="0.05"
-              value={form.entry_thr || 0.4}
-              onChange={(e) => handleFieldChange("entry_thr", e.target.value)}
-            />
-
-            <Field
-              label="Minimum Hold Bars"
-              value={form.min_hold || 12}
-              onChange={(e) => handleFieldChange("min_hold", e.target.value)}
-            />
-
-            <label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 cursor-pointer hover:bg-zinc-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={form.use_ema_filter || false}
-                onChange={(e) => handleFieldChange("use_ema_filter", e.target.checked)}
-                className="w-5 h-5 rounded accent-[#FF6B35]"
-              />
-              <span className="font-semibold text-zinc-700">Use EMA Trend Filter (100 EMA)</span>
-            </label>
-
-            <label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 cursor-pointer hover:bg-zinc-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={form.use_perf_multipliers || false}
-                onChange={(e) => handleFieldChange("use_perf_multipliers", e.target.checked)}
-                className="w-5 h-5 rounded accent-[#FF6B35]"
-              />
-              <div>
-                <span className="font-semibold text-zinc-700 block">Enable Performance Multipliers</span>
-                <span className="text-xs text-zinc-500 block mt-0.5">
-                  Scales asset scores dynamically based on recent winning or losing streaks (requires historical trades). Enable to suppress entry on coins with recent losses.
-                </span>
+            {form.profile === "custom" && (
+              <div style={{ padding:"12px 14px", borderRadius:14, background:"var(--bg-elevated)", border:"1.5px solid var(--border)", display:"flex", flexDirection:"column", gap:4 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontWeight:700, fontSize:14, color:"var(--text-primary)" }}>🔧 Custom Settings</span>
+                  <span className="badge badge-muted" style={{ fontSize:9 }}>Active</span>
+                </div>
+                <p style={{ fontSize:11, color:"var(--text-secondary)", lineHeight:1.3 }}>You have customized settings using the fields below.</p>
               </div>
-            </label>
-          </div>
-
-          {/* Group 3: Hyper-Growth & Compounding */}
-          <div className="space-y-4 rounded-[28px] bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-bold text-[#FF6B35] mb-2 border-b pb-2">Hyper-Growth & Compounding</h2>
-            
-            <Field
-              label="Base Leverage"
-              value={form.leverage}
-              onChange={(e) => handleFieldChange("leverage", e.target.value)}
-            />
-
-            <Field
-              label="Starting Paper Balance (USDT)"
-              value={form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0}
-              onChange={(e) => handleFieldChange("paper_start_balance", e.target.value)}
-            />
-
-            <Field
-              label="Compounding Allocation Ratio (Fraction of equity)"
-              step="0.01"
-              value={form.alloc_ratio || 0.25}
-              onChange={(e) => handleFieldChange("alloc_ratio", e.target.value)}
-            />
-
-            <label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 cursor-pointer hover:bg-zinc-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={form.use_telescoping_leverage || false}
-                onChange={(e) => handleFieldChange("use_telescoping_leverage", e.target.checked)}
-                className="w-5 h-5 rounded accent-[#FF6B35]"
-              />
-              <div>
-                <span className="font-semibold text-zinc-700 block">Use Telescoping Leverage</span>
-                <span className="text-xs text-zinc-500 block mt-0.5">Adjusts: 20x (&lt;$50) &rarr; 10x (&lt;$500) &rarr; 3x (&ge;$500)</span>
-              </div>
-            </label>
-          </div>
-
-          {/* Group 4: Machine Learning Filter */}
-          <div className="space-y-4 rounded-[28px] bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-bold text-[#FF6B35] mb-2 border-b pb-2">Machine Learning (ML) Filter</h2>
-            
-            <label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 cursor-pointer hover:bg-zinc-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={form.use_ml_filter || false}
-                onChange={(e) => handleFieldChange("use_ml_filter", e.target.checked)}
-                className="w-5 h-5 rounded accent-[#FF6B35]"
-              />
-              <div>
-                <span className="font-semibold text-zinc-700 block">Enable ML Signal Filter</span>
-                <span className="text-xs text-zinc-500 block mt-0.5">
-                  Filters out false breakout trade candidates using a trained Random Forest model. Rejects entry signals with predicted success probability below the threshold.
-                </span>
-              </div>
-            </label>
-
-            {form.use_ml_filter && (
-              <Field
-                label="ML Probability Success Threshold"
-                step="0.01"
-                value={form.ml_prob_thr !== undefined ? form.ml_prob_thr : 0.55}
-                onChange={(e) => handleFieldChange("ml_prob_thr", e.target.value)}
-              />
             )}
           </div>
-        </>
-      )}
+        </div>
 
-      {/* Save Button */}
-      <button
-        onClick={save}
-        className="w-full rounded-2xl bg-[#FF6B35] hover:bg-[#e05626] transition-colors p-4 font-semibold text-white shadow-md active:scale-[0.98] transform duration-100"
-      >
-        Save Settings
-      </button>
+        {/* Toggle Advanced */}
+        <button
+          className="btn btn-secondary btn-full fade-up"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          style={{ padding:"14px", borderRadius:16, fontSize:13 }}
+        >
+          {showAdvanced ? "Hide Advanced Settings" : "Configure Custom Parameters"}
+          {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {showAdvanced && (
+          <div className="fade-up" style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {/* Group 1: Rotator Sizing & Execution */}
+            <div className="card">
+              <div className="section-title">Rotator Sizing & Execution</div>
+              <Field
+                label="Max Positions"
+                value={form.max_positions}
+                onChange={(e) => handleFieldChange("max_positions", e.target.value)}
+              />
+              <Field
+                label="Risk Per Trade"
+                step="0.01"
+                value={form.risk_per_trade}
+                onChange={(e) => handleFieldChange("risk_per_trade", e.target.value)}
+              />
+              <Field
+                label="Rotation Threshold"
+                step="0.01"
+                value={form.rotation_threshold}
+                onChange={(e) => handleFieldChange("rotation_threshold", e.target.value)}
+              />
+              <Field
+                label="Stop Loss %"
+                step="0.001"
+                value={form.stop_loss_pct}
+                onChange={(e) => handleFieldChange("stop_loss_pct", e.target.value)}
+              />
+              <Field
+                label="Take Profit Risk-Reward (RR)"
+                step="0.1"
+                value={form.take_profit_rr}
+                onChange={(e) => handleFieldChange("take_profit_rr", e.target.value)}
+              />
+              <Field
+                label="Stop-Loss Cooldown (Scans)"
+                value={form.cooldown_scans}
+                onChange={(e) => handleFieldChange("cooldown_scans", e.target.value)}
+              />
+
+              <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"8px 0" }}>
+                <div
+                  onClick={() => handleFieldChange("auto_rotation", !form.auto_rotation)}
+                  style={{
+                    width:40, height:22, borderRadius:11,
+                    background: form.auto_rotation ? "var(--accent)" : "var(--bg-elevated)",
+                    border: `1px solid ${form.auto_rotation ? "var(--accent)" : "var(--border)"}`,
+                    position:"relative", transition:"all 0.2s", flexShrink:0,
+                  }}
+                >
+                  <div style={{
+                    width:16, height:16, borderRadius:"50%", background:"#fff",
+                    position:"absolute", top:2, left: form.auto_rotation ? 20 : 2,
+                    transition:"left 0.2s",
+                  }} />
+                </div>
+                <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600 }}>Auto Rotation</span>
+              </label>
+            </div>
+
+            {/* Group 2: Strategy Settings */}
+            <div className="card">
+              <div className="section-title">Strategy & Signals</div>
+              <SelectField
+                label="Timeframe"
+                value={form.timeframe || "15m"}
+                options={[
+                  { label: "1m", value: "1m" },
+                  { label: "5m", value: "5m" },
+                  { label: "15m", value: "15m" },
+                  { label: "1h", value: "1h" },
+                  { label: "4h", value: "4h" },
+                ]}
+                onChange={(e) => handleFieldChange("timeframe", e.target.value)}
+              />
+              <SelectField
+                label="Strategy Weight Set"
+                value={form.score_set || "balanced_mom"}
+                options={[
+                  { label: "Balanced Momentum", value: "balanced_mom" },
+                  { label: "Standard Trend", value: "standard_trend" },
+                ]}
+                onChange={(e) => handleFieldChange("score_set", e.target.value)}
+              />
+              <Field
+                label="ATR Stop Multiplier"
+                step="0.1"
+                value={form.atr_sl_mult}
+                onChange={(e) => handleFieldChange("atr_sl_mult", e.target.value)}
+              />
+              <Field
+                label="Entry Score Threshold"
+                step="0.05"
+                value={form.entry_thr}
+                onChange={(e) => handleFieldChange("entry_thr", e.target.value)}
+              />
+              <Field
+                label="Minimum Hold Bars"
+                value={form.min_hold}
+                onChange={(e) => handleFieldChange("min_hold", e.target.value)}
+              />
+
+              <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"8px 0" }}>
+                <div
+                  onClick={() => handleFieldChange("use_ema_filter", !form.use_ema_filter)}
+                  style={{
+                    width:40, height:22, borderRadius:11,
+                    background: form.use_ema_filter ? "var(--accent)" : "var(--bg-elevated)",
+                    border: `1px solid ${form.use_ema_filter ? "var(--accent)" : "var(--border)"}`,
+                    position:"relative", transition:"all 0.2s", flexShrink:0,
+                  }}
+                >
+                  <div style={{
+                    width:16, height:16, borderRadius:"50%", background:"#fff",
+                    position:"absolute", top:2, left: form.use_ema_filter ? 20 : 2,
+                    transition:"left 0.2s",
+                  }} />
+                </div>
+                <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600 }}>Use EMA Trend Filter (100 EMA)</span>
+              </label>
+
+              <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"8px 0" }}>
+                <div
+                  onClick={() => handleFieldChange("use_perf_multipliers", !form.use_perf_multipliers)}
+                  style={{
+                    width:40, height:22, borderRadius:11,
+                    background: form.use_perf_multipliers ? "var(--accent)" : "var(--bg-elevated)",
+                    border: `1px solid ${form.use_perf_multipliers ? "var(--accent)" : "var(--border)"}`,
+                    position:"relative", transition:"all 0.2s", flexShrink:0,
+                  }}
+                >
+                  <div style={{
+                    width:16, height:16, borderRadius:"50%", background:"#fff",
+                    position:"absolute", top:2, left: form.use_perf_multipliers ? 20 : 2,
+                    transition:"left 0.2s",
+                  }} />
+                </div>
+                <div>
+                  <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600, display:"block" }}>Enable Performance Multipliers</span>
+                  <span style={{ fontSize:11, color:"var(--text-muted)", display:"block", marginTop:2 }}>Scales asset scores dynamically based on recent winning or losing streaks.</span>
+                </div>
+              </label>
+            </div>
+
+            {/* Group 3: Leverage & Allocations */}
+            <div className="card">
+              <div className="section-title">Leverage & Compounding</div>
+              <Field
+                label="Base Leverage"
+                value={form.leverage}
+                onChange={(e) => handleFieldChange("leverage", e.target.value)}
+              />
+              <Field
+                label="Starting Balance (USDT)"
+                value={form.paper_start_balance}
+                onChange={(e) => handleFieldChange("paper_start_balance", e.target.value)}
+              />
+              <Field
+                label="Compounding Allocation Ratio"
+                step="0.01"
+                value={form.alloc_ratio}
+                onChange={(e) => handleFieldChange("alloc_ratio", e.target.value)}
+              />
+
+              <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"8px 0" }}>
+                <div
+                  onClick={() => handleFieldChange("use_telescoping_leverage", !form.use_telescoping_leverage)}
+                  style={{
+                    width:40, height:22, borderRadius:11,
+                    background: form.use_telescoping_leverage ? "var(--accent)" : "var(--bg-elevated)",
+                    border: `1px solid ${form.use_telescoping_leverage ? "var(--accent)" : "var(--border)"}`,
+                    position:"relative", transition:"all 0.2s", flexShrink:0,
+                  }}
+                >
+                  <div style={{
+                    width:16, height:16, borderRadius:"50%", background:"#fff",
+                    position:"absolute", top:2, left: form.use_telescoping_leverage ? 20 : 2,
+                    transition:"left 0.2s",
+                  }} />
+                </div>
+                <div>
+                  <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600, display:"block" }}>Use Telescoping Leverage</span>
+                  <span style={{ fontSize:11, color:"var(--text-muted)", display:"block", marginTop:2 }}>Auto scales: 20x (&lt;$50) &rarr; 10x (&lt;$500) &rarr; 3x (&ge;$500).</span>
+                </div>
+              </label>
+            </div>
+
+            {/* Group 4: Machine Learning Filter */}
+            <div className="card">
+              <div className="section-title">Machine Learning Filter</div>
+              <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"8px 0" }}>
+                <div
+                  onClick={() => handleFieldChange("use_ml_filter", !form.use_ml_filter)}
+                  style={{
+                    width:40, height:22, borderRadius:11,
+                    background: form.use_ml_filter ? "var(--accent)" : "var(--bg-elevated)",
+                    border: `1px solid ${form.use_ml_filter ? "var(--accent)" : "var(--border)"}`,
+                    position:"relative", transition:"all 0.2s", flexShrink:0,
+                  }}
+                >
+                  <div style={{
+                    width:16, height:16, borderRadius:"50%", background:"#fff",
+                    position:"absolute", top:2, left: form.use_ml_filter ? 20 : 2,
+                    transition:"left 0.2s",
+                  }} />
+                </div>
+                <div>
+                  <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600, display:"block" }}>Enable ML Signal Filter</span>
+                  <span style={{ fontSize:11, color:"var(--text-muted)", display:"block", marginTop:2 }}>Filters out false breakout trade candidates using a trained Random Forest model.</span>
+                </div>
+              </label>
+
+              {form.use_ml_filter && (
+                <div style={{ marginTop:12 }}>
+                  <Field
+                    label="ML Success Probability Threshold"
+                    step="0.01"
+                    value={form.ml_prob_thr}
+                    onChange={(e) => handleFieldChange("ml_prob_thr", e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <button
+          className="btn btn-primary btn-full fade-up"
+          onClick={save}
+          disabled={saving}
+          style={{ padding:"16px", borderRadius:16 }}
+        >
+          {saving ? "Saving Changes..." : "Save Configuration"}
+        </button>
+      </div>
     </div>
   );
 }
