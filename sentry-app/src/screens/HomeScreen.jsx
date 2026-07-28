@@ -1,230 +1,148 @@
-import { useEffect, useRef, useState } from "react";
-import useSentrySocket from "../hooks/useSentrySocket";
-import useExchanges from "../hooks/useExchanges";
-import PositionCard from "../components/cards/PositionCard";
-import OnboardingWizard from "../components/system/OnboardingWizard";
+import { TrendingUp, TrendingDown, Zap, Clock, DollarSign, BarChart3, RefreshCw } from "lucide-react";
+import usePortfolio      from "../hooks/usePortfolio";
+import useRotationMonitor from "../hooks/useRotationMonitor";
+import useRecentActivity from "../hooks/useRecentActivity";
+import useStatus         from "../hooks/useStatus";
 
-export default function HomeScreen() {
-  const { exchanges, loading: loadingExchanges, error: exchangesError, refresh: refreshExchanges } = useExchanges();
-  const { connected, snapshot } = useSentrySocket();
-
-  if (loadingExchanges) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center p-5">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#FF6B35] border-t-transparent" />
-          <p className="text-sm font-semibold text-zinc-500">Checking exchange configurations...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (exchangesError) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center p-5">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="h-8 w-8 rounded-full border-4 border-red-500 border-t-transparent animate-spin" />
-          <p className="text-sm font-semibold text-red-500">API Connection Error</p>
-          <p className="text-xs text-zinc-400 max-w-[280px]">
-            Unable to connect to the backend server. Please verify your connection or the backend status.
-          </p>
-          <button 
-            onClick={refreshExchanges}
-            className="mt-2 rounded-full bg-[#FF6B35] px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90 active:scale-95 transition-all"
-          >
-            Retry Connection
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (exchanges.length === 0) {
-    return <OnboardingWizard onComplete={refreshExchanges} />;
-  }
-
-  if (!snapshot) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center p-5">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#FF6B35] border-t-transparent" />
-          <p className="text-sm font-semibold text-zinc-500">Waiting for live rotator updates...</p>
-          <p className="text-xs text-zinc-400 max-w-[280px]">
-            Please ensure you have started the rotator engine from the Control Center or Profile screen.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const portfolio = snapshot.portfolio;
-  const status    = snapshot.status;
-  const rotation  = snapshot.rotation;
-  const positions = snapshot.positions || [];
-
-  const getStatusBadge = (val) => {
-    if (!val) return null;
-    const cleanVal = val.toUpperCase();
-    if (cleanVal === "ACTIVE" || cleanVal === "ENABLED") {
-      return (
-        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
-          {cleanVal}
-        </span>
-      );
-    }
-    if (cleanVal === "COOLDOWN") {
-      return (
-        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/10 animate-pulse">
-          {cleanVal}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center rounded-full bg-zinc-50 px-2.5 py-0.5 text-[10px] font-bold text-zinc-600 ring-1 ring-inset ring-zinc-500/10">
-        {cleanVal}
-      </span>
-    );
-  };
-
-  const getPositionsBadge = () => (
-    <span className="inline-flex items-center rounded-full bg-[#FF6B35]/10 px-2.5 py-0.5 text-[10px] font-bold text-[#FF6B35] ring-1 ring-inset ring-[#FF6B35]/20">
-      {portfolio.positions_filled}/{portfolio.max_positions}
+function PnlValue({ value }) {
+  const pos = value >= 0;
+  return (
+    <span className={pos ? "pnl-pos" : "pnl-neg"}>
+      {pos ? "+" : ""}${Math.abs(value).toFixed(2)}
     </span>
   );
+}
 
+function StatCard({ label, value, sub, accent }) {
   return (
-    <div className="p-5 space-y-4">
-
-      {/* ── Equity Hero Card ─────────────────────────────────── */}
-      <div className="rounded-[32px] bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between">
-
-          <div>
-            <p className="text-sm text-zinc-500">Total Equity</p>
-
-            <h1 className="mt-2 text-5xl font-bold tabular-nums transition-[color] duration-300">
-              <AnimatedDollar value={portfolio.equity} decimals={2} />
-            </h1>
-
-            <PnlLine value={portfolio.today_pnl} pct={portfolio.today_pnl_pct} />
-          </div>
-
-          <div className="flex items-center gap-2">
-            {snapshot.paper_trading !== undefined && (
-              <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide ${
-                snapshot.paper_trading
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-emerald-100 text-emerald-700"
-              }`}>
-                {snapshot.paper_trading ? "Paper" : "Live"}
-              </span>
-            )}
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── Portfolio Status ─────────────────────────────────── */}
-      <div className="rounded-[28px] bg-white p-5 shadow-sm">
-        <p className="text-sm text-zinc-500">Portfolio Status</p>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-
-          <div className="flex flex-col gap-1 items-start">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Positions</p>
-            <div className="mt-1">{getPositionsBadge()}</div>
-          </div>
-
-          <div className="flex flex-col gap-1 items-start">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Scanner</p>
-            <div className="mt-1">{getStatusBadge(status.scanner)}</div>
-          </div>
-
-          <div className="flex flex-col gap-1 items-start">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Rotation</p>
-            <div className="mt-1">{getStatusBadge(status.rotation)}</div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── Drawdown ─────────────────────────────────────────── */}
-      <div className="rounded-[28px] bg-white p-5 shadow-sm">
-        <p className="text-sm text-zinc-500">Drawdown</p>
-        <h2 className="mt-3 text-3xl font-bold tabular-nums">
-          <AnimatedNumber value={portfolio.drawdown} decimals={2} />%
-        </h2>
-        {/* thin progress bar so it feels live */}
-        <div className="mt-3 h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-[#FF6B35] transition-[width] duration-700 ease-out"
-            style={{ width: `${Math.min(portfolio.drawdown, 100)}%` }}
-          />
-        </div>
-      </div>
-
-      {/* ── Rotation Opportunity ─────────────────────────────── */}
-      <div className="rounded-[28px] bg-white p-5 shadow-sm">
-        <p className="text-sm text-zinc-500">Rotation Opportunity</p>
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div>
-            <p className="font-semibold text-xs text-zinc-400 uppercase tracking-wider">Current Weakest</p>
-            <p className="text-lg font-bold mt-1 transition-all duration-300">{rotation.current || "-"}</p>
-            <p className="text-xs text-zinc-500">Score: {rotation.current_score !== undefined ? rotation.current_score : "-"}</p>
-          </div>
-
-          {rotation.candidate && rotation.candidate !== "-" && (
-            <div>
-              <p className="font-semibold text-xs text-zinc-400 uppercase tracking-wider">Best Candidate</p>
-              <p className="text-lg font-bold mt-1 text-[#FF6B35] transition-all duration-300">{rotation.candidate}</p>
-              <p className="text-xs text-zinc-500">Score: {rotation.candidate_score !== undefined ? rotation.candidate_score : "-"}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Live Positions ───────────────────────────────────── */}
-      <div className="space-y-4">
-        <p className="text-zinc-500 text-sm">Live Positions</p>
-
-        {positions.length === 0 ? (
-          <div className="rounded-[28px] bg-white p-5 text-zinc-500 shadow-sm">
-            No positions open
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {positions.map((position) => (
-              <PositionCard key={position.symbol} position={position} />
-            ))}
-          </div>
-        )}
-      </div>
-
+    <div className="card fade-up" style={{ flex: 1 }}>
+      <div className="stat-label">{label}</div>
+      <div className={`stat-value-sm ${accent || ""}`}>{value}</div>
+      {sub && <div className="stat-sub">{sub}</div>}
     </div>
   );
 }
 
-/* ── Rendering helpers ─────────────────────────────────────── */
+export default function HomeScreen() {
+  const { portfolio, loading: pLoading } = usePortfolio();
+  const { positions }                    = useRotationMonitor();
+  const { activities }                   = useRecentActivity();
+  const { status }                       = useStatus();
 
-function AnimatedNumber({ value, decimals = 2 }) {
-  const num = Number(value);
-  return <>{isNaN(num) ? "0.00" : num.toFixed(decimals)}</>;
-}
+  const totalPnl   = portfolio?.total_pnl   ?? 0;
+  const balance    = portfolio?.balance      ?? 0;
+  const winRate    = portfolio?.win_rate     ?? 0;
+  const totalTrades= portfolio?.total_trades ?? 0;
+  const openCount  = positions?.length       ?? 0;
 
-function AnimatedDollar({ value, decimals = 2 }) {
-  const num = Number(value);
-  return <>${isNaN(num) ? "0.00" : num.toFixed(decimals)}</>;
-}
-
-function PnlLine({ value, pct }) {
-  const numVal = Number(value) || 0;
-  const numPct = Number(pct) || 0;
-  const positive = numVal >= 0;
   return (
-    <p className={`mt-2 tabular-nums text-sm font-semibold transition-colors duration-300 ${positive ? "text-green-600" : "text-red-500"}`}>
-      {positive ? "+" : ""}${numVal.toFixed(4)}&nbsp;
-      <span className="text-xs font-normal opacity-70">
-        ({positive ? "+" : ""}{numPct.toFixed(2)}%)
-      </span>
-    </p>
+    <div>
+      {/* ── Header ────────────────────────────────────────── */}
+      <div className="page-header">
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--text-muted)", marginBottom:2 }}>
+              Sentry Bot
+            </div>
+            <h1 style={{ fontSize:22, fontWeight:800, color:"var(--text-primary)" }}>Dashboard</h1>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span className={`dot ${status?.running ? "dot-green pulse-dot" : "dot-muted"}`} />
+            <span style={{ fontSize:12, color:"var(--text-secondary)", fontWeight:600 }}>
+              {status?.running ? "Live" : "Offline"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="content">
+        {/* ── Balance card ──────────────────────────────────── */}
+        <div className="card fade-up" style={{ background:"linear-gradient(135deg, #1e2330 0%, #181c24 100%)", position:"relative", overflow:"hidden" }}>
+          <div style={{ position:"absolute", top:-20, right:-20, width:120, height:120, borderRadius:"50%", background:"var(--accent-glow)", filter:"blur(40px)", pointerEvents:"none" }} />
+          <div className="stat-label">Total Balance</div>
+          <div style={{ fontSize:36, fontWeight:800, color:"var(--text-primary)", lineHeight:1.1, margin:"6px 0 4px" }}>
+            ${pLoading ? "—" : balance.toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 })}
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            {totalPnl >= 0
+              ? <TrendingUp size={14} color="var(--green)" />
+              : <TrendingDown size={14} color="var(--red)" />}
+            <span style={{ fontSize:13, fontWeight:600 }} className={totalPnl >= 0 ? "pnl-pos" : "pnl-neg"}>
+              {totalPnl >= 0 ? "+" : ""}${Math.abs(totalPnl).toFixed(2)} all time
+            </span>
+          </div>
+        </div>
+
+        {/* ── Stats row ─────────────────────────────────────── */}
+        <div style={{ display:"flex", gap:10 }}>
+          <StatCard
+            label="Win Rate"
+            value={`${(winRate * 100).toFixed(1)}%`}
+            sub={`${totalTrades} trades`}
+            accent="text-green"
+          />
+          <StatCard
+            label="Open"
+            value={openCount}
+            sub="positions"
+            accent="text-accent"
+          />
+        </div>
+
+        {/* ── Open positions ────────────────────────────────── */}
+        {openCount > 0 && (
+          <div className="card fade-up">
+            <div className="section-title">Open Positions</div>
+            {positions.map((pos, i) => (
+              <div key={i} className="row">
+                <div>
+                  <div style={{ fontWeight:700, fontSize:14 }}>{pos.symbol}</div>
+                  <div style={{ fontSize:12, color:"var(--text-muted)", marginTop:2 }}>
+                    <span className={pos.side === "buy" ? "text-green" : "text-red"} style={{ fontWeight:600, textTransform:"uppercase" }}>
+                      {pos.side}
+                    </span>
+                    {" "}@ ${pos.entry_price?.toFixed(2)}
+                  </div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontWeight:700, fontSize:14 }} className={pos.pnl_usdt >= 0 ? "pnl-pos" : "pnl-neg"}>
+                    <PnlValue value={pos.pnl_usdt ?? 0} />
+                  </div>
+                  <div style={{ fontSize:12, color:"var(--text-muted)" }}>
+                    {pos.pnl_percent?.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Recent activity ───────────────────────────────── */}
+        <div className="card fade-up">
+          <div className="section-title">Recent Activity</div>
+          {!activities?.length ? (
+            <div style={{ color:"var(--text-muted)", fontSize:13, padding:"8px 0" }}>No recent activity</div>
+          ) : (
+            activities.slice(0, 6).map((a, i) => (
+              <div key={i} className="row">
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:32, height:32, borderRadius:10, background:"var(--bg-elevated)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <Zap size={14} color="var(--accent)" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:600 }}>{a.event_type?.replace(/_/g," ")}</div>
+                    <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:1 }}>{a.message?.slice(0,48)}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize:11, color:"var(--text-muted)", flexShrink:0 }}>
+                  <Clock size={10} style={{ display:"inline", marginRight:3 }} />
+                  {new Date(a.created_at).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
