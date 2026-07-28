@@ -71,8 +71,15 @@ def save_settings(
     settings.use_ml_filter = payload.use_ml_filter
     settings.ml_prob_thr = payload.ml_prob_thr
 
-    db.commit()
+    # Custom weights & indicators
+    settings.custom_w_rsi = payload.custom_w_rsi
+    settings.custom_w_st = payload.custom_w_st
+    settings.custom_w_mom = payload.custom_w_mom
+    settings.st_period = payload.st_period
+    settings.st_mult = payload.st_mult
+    settings.ema_trend_period = payload.ema_trend_period
 
+    db.commit()
 
     from services.bot_controller import export_settings_from_db
     export_settings_from_db(str(user.id))
