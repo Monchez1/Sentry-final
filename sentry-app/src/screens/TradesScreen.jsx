@@ -1,182 +1,94 @@
-import { useState } from "react";
+import { ArrowUpRight, ArrowDownRight, Clock } from "lucide-react";
 import useTradeHistory from "../hooks/useTradeHistory";
-import { RefreshCw } from "lucide-react";
 
-function StatCard({ label, value, positive }) {
+function TradeRow({ trade }) {
+  const isBuy = trade.side === "buy";
+  const pos   = trade.pnl_usdt >= 0;
   return (
-    <div className="rounded-[22px] bg-white p-4 shadow-sm">
-      <p className="text-xs text-zinc-500">
-        {label}
-      </p>
-
-      <p
-        className={
-          positive === true
-            ? "mt-1 text-xl font-bold text-green-600"
-            : positive === false
-            ? "mt-1 text-xl font-bold text-red-500"
-            : "mt-1 text-xl font-bold"
-        }
-      >
-        {value}
-      </p>
+    <div className="card-sm card fade-up" style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)", marginBottom:8 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{
+          width:36, height:36, borderRadius:11,
+          background: isBuy ? "var(--green-soft)" : "var(--red-soft)",
+          display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+        }}>
+          {isBuy
+            ? <ArrowUpRight size={18} color="var(--green)" />
+            : <ArrowDownRight size={18} color="var(--red)" />}
+        </div>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <span style={{ fontWeight:700, fontSize:14 }}>{trade.symbol}</span>
+            <span style={{ fontWeight:700, fontSize:14 }} className={pos ? "pnl-pos" : "pnl-neg"}>
+              {pos ? "+" : ""}${Math.abs(trade.pnl_usdt).toFixed(2)}
+            </span>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:4 }}>
+            <div style={{ display:"flex", gap:8 }}>
+              <span className={`badge ${isBuy ? "badge-green" : "badge-red"}`} style={{ padding:"2px 8px", fontSize:10 }}>
+                {trade.side?.toUpperCase()}
+              </span>
+              <span style={{ fontSize:11, color:"var(--text-muted)" }}>
+                ${trade.entry_price?.toFixed(2)} → ${trade.exit_price?.toFixed(2)}
+              </span>
+            </div>
+            <span style={{ fontSize:11, color:"var(--text-muted)" }}>
+              {trade.pnl_percent >= 0 ? "+" : ""}{trade.pnl_percent?.toFixed(2)}%
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function TradesScreen() {
-  const { trades, stats, loading, refresh } = useTradeHistory();
-  const [visibleCount, setVisibleCount] = useState(20);
+  const { trades, loading } = useTradeHistory();
 
-  const formatPrice = (price) => {
-    if (price == null) return "—";
-    return Number(price).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 5,
-    });
-  };
+  const wins   = trades.filter(t => t.pnl_usdt > 0);
+  const losses = trades.filter(t => t.pnl_usdt <= 0);
+  const totalPnl = trades.reduce((s, t) => s + (t.pnl_usdt || 0), 0);
+  const winRate  = trades.length ? ((wins.length / trades.length) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between rounded-[28px] bg-white p-5 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold">
-            Trade History
-          </h1>
-          <p className="mt-1 text-xs text-zinc-500">
-            Closed trades from the live rotator
-          </p>
+    <div>
+      <div className="page-header">
+        <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--text-muted)", marginBottom:2 }}>
+          History
         </div>
-
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className={`rounded-full p-2.5 text-[#FF6B35] hover:bg-zinc-100 transition active:scale-95 ${
-            loading ? "animate-spin" : ""
-          }`}
-          title="Refresh trades"
-        >
-          <RefreshCw size={20} />
-        </button>
+        <h1 style={{ fontSize:22, fontWeight:800 }}>Trade Log</h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard
-          label="Total Trades"
-          value={stats.total}
-        />
-
-        <StatCard
-          label="Win Rate"
-          value={`${stats.winRate}%`}
-        />
-
-        <StatCard
-          label="Net PnL"
-          value={`$${Number(stats.netPnl || 0).toFixed(4)}`}
-          positive={stats.netPnl > 0 ? true : stats.netPnl < 0 ? false : null}
-        />
-
-        <StatCard
-          label="Latest Balance"
-          value={`$${Number(stats.latestBalance || 0).toFixed(2)}`}
-        />
-      </div>
-
-      {loading && trades.length === 0 ? (
-        <div className="rounded-[28px] bg-white p-8 text-center text-zinc-500 shadow-sm">
-          <RefreshCw className="mx-auto h-6 w-6 animate-spin text-[#FF6B35] mb-2" />
-          <p className="text-sm">Syncing trade history...</p>
-        </div>
-      ) : trades.length === 0 ? (
-        <div className="rounded-[28px] bg-white p-6 text-center text-zinc-500 shadow-sm">
-          No closed trades yet.
-        </div>
-      ) : (
-        <>
-          {trades.slice(0, visibleCount).map((trade) => (
-            <div
-              key={trade.id}
-              className="rounded-[24px] bg-white p-4 shadow-sm"
-            >
-              <div className="flex justify-between">
-                <div>
-                  <p className="font-semibold text-base">
-                    {trade.symbol}
-                  </p>
-
-                  <p className={`text-xs font-bold mt-0.5 ${
-                    trade.side?.toUpperCase() === "LONG" ? "text-green-600" : "text-red-500"
-                  }`}>
-                    {trade.side}
-                  </p>
-                </div>
-
-                <div
-                  className={
-                    trade.pnl >= 0
-                      ? "text-right font-bold text-base text-green-600"
-                      : "text-right font-bold text-base text-red-500"
-                  }
-                >
-                  {trade.pnl >= 0 ? "+" : ""}${Number(trade.pnl || 0).toFixed(4)}
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-2xl bg-zinc-50 p-3">
-                  <p className="text-xs text-zinc-500">
-                    Entry
-                  </p>
-                  <p className="font-semibold text-zinc-800 mt-0.5">
-                    {formatPrice(trade.entry_price)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-zinc-50 p-3">
-                  <p className="text-xs text-zinc-500">
-                    Exit
-                  </p>
-                  <p className="font-semibold text-zinc-800 mt-0.5">
-                    {formatPrice(trade.exit_price)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-zinc-50 p-3">
-                  <p className="text-xs text-zinc-500">
-                    Reason
-                  </p>
-                  <p className="font-semibold text-zinc-800 mt-0.5 capitalize">
-                    {trade.reason?.toLowerCase().replace("_", " ") || "UNKNOWN"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-zinc-50 p-3">
-                  <p className="text-xs text-zinc-500">
-                    Held
-                  </p>
-                  <p className="font-semibold text-zinc-800 mt-0.5">
-                    {trade.bars_held || 0} bars
-                  </p>
-                </div>
-              </div>
-
-              <p className="mt-3 text-[10px] text-zinc-400">
-                {trade.closed_at}
-              </p>
+      <div className="content">
+        {/* Stats summary */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+          {[
+            { label:"Total PnL",  value: `${totalPnl >= 0 ? "+" : ""}$${Math.abs(totalPnl).toFixed(0)}`, accent: totalPnl >= 0 ? "pnl-pos" : "pnl-neg" },
+            { label:"Win Rate",   value: `${winRate}%`, accent:"text-green" },
+            { label:"Trades",     value: trades.length, accent:"" },
+          ].map(({ label, value, accent }) => (
+            <div key={label} className="card fade-up" style={{ padding:"14px 12px" }}>
+              <div className="stat-label" style={{ fontSize:10 }}>{label}</div>
+              <div className={`stat-value-sm ${accent}`} style={{ fontSize:16 }}>{value}</div>
             </div>
           ))}
+        </div>
 
-          {trades.length > visibleCount && (
-            <button
-              onClick={() => setVisibleCount((prev) => prev + 20)}
-              className="w-full rounded-2xl border-2 border-zinc-100 hover:border-zinc-200 bg-white p-4 font-semibold text-[#FF6B35] text-sm shadow-sm transition active:scale-[0.98] transform duration-100"
-            >
-              Load More Trades
-            </button>
-          )}
-        </>
-      )}
+        {/* Trade list */}
+        {loading && [1,2,3,4].map(i => (
+          <div key={i} className="skeleton" style={{ height:70, borderRadius:16, marginBottom:8 }} />
+        ))}
+
+        {!loading && trades.length === 0 && (
+          <div className="card fade-up" style={{ textAlign:"center", padding:"40px 20px" }}>
+            <Clock size={28} color="var(--text-muted)" style={{ margin:"0 auto 12px" }} />
+            <div style={{ fontWeight:700, fontSize:15, marginBottom:4 }}>No trades yet</div>
+            <div style={{ color:"var(--text-secondary)", fontSize:13 }}>Trades will appear here once the bot executes</div>
+          </div>
+        )}
+
+        {!loading && trades.map((t, i) => <TradeRow key={i} trade={t} />)}
+      </div>
     </div>
   );
 }
