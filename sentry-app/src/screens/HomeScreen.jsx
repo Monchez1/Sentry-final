@@ -26,8 +26,8 @@ function StatCard({ label, value, sub, accent }) {
 export default function HomeScreen() {
   const { portfolio, loading: pLoading } = usePortfolio();
   const positions                        = usePositions() || [];
-  const { activities }                   = useRecentActivity();
-  const { status }                       = useStatus();
+  const activities                       = useRecentActivity() || [];
+  const status                           = useStatus();
 
   const totalPnl   = portfolio?.total_pnl   ?? 0;
   const balance    = portfolio?.balance      ?? 0;
@@ -39,18 +39,20 @@ export default function HomeScreen() {
     <div>
       {/* ── Header ────────────────────────────────────────── */}
       <div className="page-header">
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div>
-            <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--text-muted)", marginBottom:2 }}>
-              Sentry Bot
+        <div style={{ display:"flex", alignItems:"center", justifyBetween:"space-between" }}>
+          <div style={{ display:"flex", flex:1, justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--text-muted)", marginBottom:2 }}>
+                Sentry Bot
+              </div>
+              <h1 style={{ fontSize:22, fontWeight:800, color:"var(--text-primary)" }}>Dashboard</h1>
             </div>
-            <h1 style={{ fontSize:22, fontWeight:800, color:"var(--text-primary)" }}>Dashboard</h1>
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <span className={`dot ${status?.running ? "dot-green pulse-dot" : "dot-muted"}`} />
-            <span style={{ fontSize:12, color:"var(--text-secondary)", fontWeight:600 }}>
-              {status?.running ? "Live" : "Offline"}
-            </span>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <span className={`dot ${status?.running ? "dot-green pulse-dot" : "dot-muted"}`} />
+              <span style={{ fontSize:12, color:"var(--text-secondary)", fontWeight:600 }}>
+                {status?.running ? "Live" : "Offline"}
+              </span>
+            </div>
           </div>
         </div>
       </div>
