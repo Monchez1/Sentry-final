@@ -1,85 +1,33 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
-
+import { Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layout/MainLayout";
-
-import HomeScreen from "./screens/HomeScreen";
-import SignalsScreen from "./screens/SignalsScreen";
-import TradesScreen from "./screens/TradesScreen";
-import ProfileScreen from "./screens/ProfileScreen";
-
-import ExchangeApisScreen from "./screens/ExchangeApisScreen";
-import StrategySettingsScreen from "./screens/StrategySettingsScreen";
-import RiskSettingsScreen from "./screens/RiskSettingsScreen";
-import ActivityLogsScreen from "./screens/ActivityLogsScreen";
+import HomeScreen            from "./screens/HomeScreen";
+import ExchangeApisScreen    from "./screens/ExchangeApisScreen";
+import TradesScreen          from "./screens/TradesScreen";
+import ControlCenterScreen   from "./screens/ControlCenterScreen";
 import RotationMonitorScreen from "./screens/RotationMonitorScreen";
-import ControlCenterScreen from "./screens/ControlCenterScreen";
+import SignalsScreen         from "./screens/SignalsScreen";
+import RiskSettingsScreen    from "./screens/RiskSettingsScreen";
+import StrategySettingsScreen from "./screens/StrategySettingsScreen";
+import ActivityLogsScreen    from "./screens/ActivityLogsScreen";
+import ProfileScreen         from "./screens/ProfileScreen";
+import "./App.css";
 
-import FloatingPill from "./components/navigation/FloatingPill";
-
-import { useEffect } from "react";
-import useTelegram from "./hooks/useTelegram";
-
-function App() {
-  const { tg, theme } = useTelegram();
-
-  useEffect(() => {
-    const tgApp = window.Telegram?.WebApp;
-    if (tgApp) {
-      tgApp.ready();
-      tgApp.expand();
-
-
-    }
-  }, [tg, theme]);
-
-
+export default function App() {
   return (
-    <BrowserRouter>
-      <Toaster position="top-center" />
-
-      <MainLayout>
-        <Routes>
-          <Route path="/" element={<HomeScreen />} />
-          <Route path="/signals" element={<SignalsScreen />} />
-          <Route path="/trades" element={<TradesScreen />} />
-          <Route path="/profile" element={<ProfileScreen />} />
-
-          <Route
-            path="/exchange-apis"
-            element={<ExchangeApisScreen />}
-          />
-
-          <Route
-            path="/strategy-settings"
-            element={<StrategySettingsScreen />}
-          />
-
-          <Route
-            path="/risk-settings"
-            element={<RiskSettingsScreen />}
-          />
-
-          <Route
-            path="/activity-logs"
-            element={<ActivityLogsScreen />}
-          />
-
-          <Route
-            path="/rotation-monitor"
-            element={<RotationMonitorScreen />}
-          />
-
-          <Route
-            path="/control-center"
-            element={<ControlCenterScreen />}
-          />
-        </Routes>
-
-        <FloatingPill />
-      </MainLayout>
-    </BrowserRouter>
+    <MainLayout>
+      <Routes>
+        <Route path="/"                index element={<HomeScreen />} />
+        <Route path="/exchanges"       element={<ExchangeApisScreen />} />
+        <Route path="/trades"          element={<TradesScreen />} />
+        <Route path="/control"         element={<ControlCenterScreen />} />
+        <Route path="/rotation"        element={<RotationMonitorScreen />} />
+        <Route path="/signals"         element={<SignalsScreen />} />
+        <Route path="/risk"            element={<RiskSettingsScreen />} />
+        <Route path="/strategy"        element={<StrategySettingsScreen />} />
+        <Route path="/logs"            element={<ActivityLogsScreen />} />
+        <Route path="/profile"         element={<ProfileScreen />} />
+        <Route path="*"                element={<Navigate to="/" replace />} />
+      </Routes>
+    </MainLayout>
   );
 }
-
-export default App;
