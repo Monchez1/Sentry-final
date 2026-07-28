@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Zap, Clock, DollarSign, BarChart3, RefreshCw } from "lucide-react";
 import usePortfolio      from "../hooks/usePortfolio";
-import useRotationMonitor from "../hooks/useRotationMonitor";
+import usePositions      from "../hooks/usePositions";
 import useRecentActivity from "../hooks/useRecentActivity";
 import useStatus         from "../hooks/useStatus";
 
@@ -25,7 +25,7 @@ function StatCard({ label, value, sub, accent }) {
 
 export default function HomeScreen() {
   const { portfolio, loading: pLoading } = usePortfolio();
-  const { positions }                    = useRotationMonitor();
+  const positions                        = usePositions() || [];
   const { activities }                   = useRecentActivity();
   const { status }                       = useStatus();
 
