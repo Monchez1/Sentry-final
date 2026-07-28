@@ -66,6 +66,12 @@ const PRESETS = {
     use_perf_multipliers: false,
     use_ml_filter: false,
     ml_prob_thr: 0.55,
+    custom_w_rsi: 0.10,
+    custom_w_st: 0.60,
+    custom_w_mom: 0.30,
+    st_period: 10,
+    st_mult: 3.0,
+    ema_trend_period: 100,
   },
   balanced: {
     profile: "balanced",
@@ -88,6 +94,12 @@ const PRESETS = {
     use_perf_multipliers: false,
     use_ml_filter: false,
     ml_prob_thr: 0.55,
+    custom_w_rsi: 0.10,
+    custom_w_st: 0.60,
+    custom_w_mom: 0.30,
+    st_period: 10,
+    st_mult: 3.0,
+    ema_trend_period: 100,
   },
   hyper: {
     profile: "hyper",
@@ -110,6 +122,12 @@ const PRESETS = {
     use_perf_multipliers: false,
     use_ml_filter: false,
     ml_prob_thr: 0.55,
+    custom_w_rsi: 0.10,
+    custom_w_st: 0.60,
+    custom_w_mom: 0.30,
+    st_period: 10,
+    st_mult: 3.0,
+    ema_trend_period: 100,
   },
   scalper: {
     profile: "scalper",
@@ -132,6 +150,12 @@ const PRESETS = {
     use_perf_multipliers: false,
     use_ml_filter: false,
     ml_prob_thr: 0.55,
+    custom_w_rsi: 0.10,
+    custom_w_st: 0.60,
+    custom_w_mom: 0.30,
+    st_period: 10,
+    st_mult: 3.0,
+    ema_trend_period: 100,
   }
 };
 
@@ -181,6 +205,15 @@ export default function StrategySettingsScreen() {
   };
 
   const save = async () => {
+    // Validate custom weight allocation sums to 1.0 (if custom set is enabled)
+    if (form.score_set === "custom") {
+      const sum = Number(form.custom_w_rsi) + Number(form.custom_w_st) + Number(form.custom_w_mom);
+      if (Math.abs(sum - 1.0) > 0.01) {
+        toast.error(`Composite weights must sum to exactly 1.0 (Current: ${sum.toFixed(2)})`);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       await api.post("/strategy-settings/", {
@@ -206,6 +239,13 @@ export default function StrategySettingsScreen() {
         paper_start_balance: Number(form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0),
         use_ml_filter: Boolean(form.use_ml_filter),
         ml_prob_thr: Number(form.ml_prob_thr !== undefined ? form.ml_prob_thr : 0.55),
+        // Custom weights & settings
+        custom_w_rsi: Number(form.custom_w_rsi !== undefined ? form.custom_w_rsi : 0.10),
+        custom_w_st: Number(form.custom_w_st !== undefined ? form.custom_w_st : 0.60),
+        custom_w_mom: Number(form.custom_w_mom !== undefined ? form.custom_w_mom : 0.30),
+        st_period: Number(form.st_period !== undefined ? form.st_period : 10),
+        st_mult: Number(form.st_mult !== undefined ? form.st_mult : 3.0),
+        ema_trend_period: Number(form.ema_trend_period !== undefined ? form.ema_trend_period : 100),
       });
 
       toast.success("Strategy settings saved");
@@ -370,9 +410,38 @@ export default function StrategySettingsScreen() {
                 options={[
                   { label: "Balanced Momentum", value: "balanced_mom" },
                   { label: "Standard Trend", value: "standard_trend" },
+                  { label: "🔧 Custom Weights Set (Specify below)", value: "custom" },
                 ]}
                 onChange={(e) => handleFieldChange("score_set", e.target.value)}
               />
+
+              {form.score_set === "custom" && (
+                <div style={{ padding:"12px 14px", borderRadius:12, background:"var(--bg-elevated)", border:"1px solid var(--border)", marginBottom:14, display:"flex", flexDirection:"column", gap:6 }}>
+                  <div className="stat-label">Composite Strategy Weights</div>
+                  <Field
+                    label="RSI Weight"
+                    step="0.05"
+                    value={form.custom_w_rsi}
+                    onChange={(e) => handleFieldChange("custom_w_rsi", e.target.value)}
+                    sub="Weight of the Mean Reversion component"
+                  />
+                  <Field
+                    label="Supertrend Weight"
+                    step="0.05"
+                    value={form.custom_w_st}
+                    onChange={(e) => handleFieldChange("custom_w_st", e.target.value)}
+                    sub="Weight of the Trend Following component"
+                  />
+                  <Field
+                    label="Momentum Weight"
+                    step="0.05"
+                    value={form.custom_w_mom}
+                    onChange={(e) => handleFieldChange("custom_w_mom", e.target.value)}
+                    sub="Weight of the Momentum filter component"
+                  />
+                </div>
+              )}
+
               <Field
                 label="ATR Stop Multiplier"
                 step="0.1"
@@ -407,10 +476,36 @@ export default function StrategySettingsScreen() {
                     transition:"left 0.2s",
                   }} />
                 </div>
-                <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600 }}>Use EMA Trend Filter (100 EMA)</span>
+                <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600 }}>Use EMA Trend Filter</span>
               </label>
 
-              <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"8px 0" }}>
+              {form.use_ema_filter && (
+                <div style={{ marginTop:10 }}>
+                  <Field
+                    label="EMA Trend Filter Period"
+                    value={form.ema_trend_period}
+                    onChange={(e) => handleFieldChange("ema_trend_period", e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Custom Supertrend Config */}
+              <div style={{ padding:"12px 14px", borderRadius:12, background:"var(--bg-elevated)", border:"1px solid var(--border)", marginTop:12 }}>
+                <div className="stat-label">Supertrend Parameters</div>
+                <Field
+                  label="Supertrend Period"
+                  value={form.st_period}
+                  onChange={(e) => handleFieldChange("st_period", e.target.value)}
+                />
+                <Field
+                  label="Supertrend Multiplier"
+                  step="0.1"
+                  value={form.st_mult}
+                  onChange={(e) => handleFieldChange("st_mult", e.target.value)}
+                />
+              </div>
+
+              <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"8px 0", marginTop:12 }}>
                 <div
                   onClick={() => handleFieldChange("use_perf_multipliers", !form.use_perf_multipliers)}
                   style={{
