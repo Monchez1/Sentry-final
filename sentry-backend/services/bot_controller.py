@@ -91,6 +91,13 @@ def export_settings_from_db(telegram_id: str = None):
                 "paper_start_balance":       float(strat.paper_start_balance)      if strat.paper_start_balance      is not None else 10.0,
                 "use_ml_filter":             bool(strat.use_ml_filter)             if strat.use_ml_filter            is not None else False,
                 "ml_prob_thr":               float(strat.ml_prob_thr)              if strat.ml_prob_thr              is not None else 0.55,
+                "custom_w_rsi":              float(strat.custom_w_rsi)             if getattr(strat, "custom_w_rsi", None) is not None else 0.10,
+                "custom_w_st":               float(strat.custom_w_st)              if getattr(strat, "custom_w_st", None) is not None else 0.60,
+                "custom_w_mom":              float(strat.custom_w_mom)             if getattr(strat, "custom_w_mom", None) is not None else 0.30,
+                "st_period":                 int(strat.st_period)                  if getattr(strat, "st_period", None) is not None else 10,
+                "st_mult":                   float(strat.st_mult)                  if getattr(strat, "st_mult", None) is not None else 3.0,
+                "ema_trend_period":          int(strat.ema_trend_period)           if getattr(strat, "ema_trend_period", None) is not None else 100,
+
             })
             if not strat.paper_trading:
                 exchange_row = (
