@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-import traceback
 
 from database.deps import get_db
 from database.models.strategy_settings import StrategySettings
@@ -18,25 +17,19 @@ def get_settings(
     db: Session = Depends(get_db),
     user: TelegramUser = Depends(get_current_tg_user),
 ):
-    try:
-        settings = (
-            db.query(StrategySettings)
-            .filter(StrategySettings.telegram_id == str(user.id))
-            .first()
-        )
+    settings = (
+        db.query(StrategySettings)
+        .filter(StrategySettings.telegram_id == str(user.id))
+        .first()
+    )
 
-        if not settings:
-            settings = StrategySettings(telegram_id=str(user.id))
-            db.add(settings)
-            db.commit()
-            db.refresh(settings)
+    if not settings:
+        settings = StrategySettings(telegram_id=str(user.id))
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
 
-        return settings
-    except Exception as e:
-        return {
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }
+    return settings
 
 @router.post("/")
 def save_settings(
