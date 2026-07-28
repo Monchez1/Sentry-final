@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Sliders, Shield, Zap, Sparkles, HelpCircle, Save, Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { Save, ChevronDown, ChevronUp } from "lucide-react";
 
 import api from "../services/api";
 import useStrategySettings from "../hooks/useStrategySettings";
@@ -30,7 +30,7 @@ function SelectField({ label, value, options, onChange }) {
         {label}
       </span>
       <select
-        value={value}
+        value={value ?? ""}
         onChange={onChange}
         className="input"
       >
@@ -166,7 +166,18 @@ export default function StrategySettingsScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (settings) setForm(settings);
+    if (settings) {
+      // Ensure defaults for database rows that might have NULL values
+      setForm({
+        ...settings,
+        custom_w_rsi: settings.custom_w_rsi ?? 0.10,
+        custom_w_st: settings.custom_w_st ?? 0.60,
+        custom_w_mom: settings.custom_w_mom ?? 0.30,
+        st_period: settings.st_period ?? 10,
+        st_mult: settings.st_mult ?? 3.0,
+        ema_trend_period: settings.ema_trend_period ?? 100,
+      });
+    }
   }, [settings]);
 
   if (!form) {
@@ -205,7 +216,6 @@ export default function StrategySettingsScreen() {
   };
 
   const save = async () => {
-    // Validate custom weight allocation sums to 1.0 (if custom set is enabled)
     if (form.score_set === "custom") {
       const sum = Number(form.custom_w_rsi) + Number(form.custom_w_st) + Number(form.custom_w_mom);
       if (Math.abs(sum - 1.0) > 0.01) {
@@ -239,13 +249,12 @@ export default function StrategySettingsScreen() {
         paper_start_balance: Number(form.paper_start_balance !== undefined ? form.paper_start_balance : 10.0),
         use_ml_filter: Boolean(form.use_ml_filter),
         ml_prob_thr: Number(form.ml_prob_thr !== undefined ? form.ml_prob_thr : 0.55),
-        // Custom weights & settings
-        custom_w_rsi: Number(form.custom_w_rsi !== undefined ? form.custom_w_rsi : 0.10),
-        custom_w_st: Number(form.custom_w_st !== undefined ? form.custom_w_st : 0.60),
-        custom_w_mom: Number(form.custom_w_mom !== undefined ? form.custom_w_mom : 0.30),
-        st_period: Number(form.st_period !== undefined ? form.st_period : 10),
-        st_mult: Number(form.st_mult !== undefined ? form.st_mult : 3.0),
-        ema_trend_period: Number(form.ema_trend_period !== undefined ? form.ema_trend_period : 100),
+        custom_w_rsi: Number(form.custom_w_rsi),
+        custom_w_st: Number(form.custom_w_st),
+        custom_w_mom: Number(form.custom_w_mom),
+        st_period: Number(form.st_period),
+        st_mult: Number(form.st_mult),
+        ema_trend_period: Number(form.ema_trend_period),
       });
 
       toast.success("Strategy settings saved");
