@@ -170,6 +170,8 @@ class RotatorEngine:
                 strat.use_ema_filter, strat.alloc_ratio, strat.use_telescoping_leverage,
                 strat.use_perf_multipliers, strat.paper_trading, strat.paper_start_balance,
                 getattr(strat, "use_ml_filter", False), getattr(strat, "ml_prob_thr", 0.55),
+                getattr(strat, "custom_w_rsi", 0.10), getattr(strat, "custom_w_st", 0.60), getattr(strat, "custom_w_mom", 0.30),
+                getattr(strat, "st_period", 10), getattr(strat, "st_mult", 3.0), getattr(strat, "ema_trend_period", 100),
             ))
             if settings_hash == self._last_settings_hash:
                 return  # nothing changed
@@ -195,6 +197,15 @@ class RotatorEngine:
             self.use_ml_filter             = bool(getattr(strat, "use_ml_filter", False))
             self.ml_prob_thr               = float(getattr(strat, "ml_prob_thr", 0.55))
 
+            # Custom weights & indicators
+            self.custom_w_rsi              = float(getattr(strat, "custom_w_rsi", 0.10))
+            self.custom_w_st               = float(getattr(strat, "custom_w_st", 0.60))
+            self.custom_w_mom              = float(getattr(strat, "custom_w_mom", 0.30))
+            self.st_period                 = int(getattr(strat, "st_period", 10))
+            self.st_mult                   = float(getattr(strat, "st_mult", 3.0))
+            self.ema_trend_period          = int(getattr(strat, "ema_trend_period", 100))
+
+
             if self.use_ml_filter:
                 self.load_ml_model()
 
@@ -209,10 +220,12 @@ class RotatorEngine:
                 "mr_100_0_0":    (1.0, 0.0,  0.0),
                 "balanced_mom":  (0.1, 0.6,  0.3),
                 "pure_supertrend":(0.0, 1.0, 0.0),
+                "custom":        (self.custom_w_rsi, self.custom_w_st, self.custom_w_mom),
             }
             self.W_RSI, self.W_ST, self.W_MOM = score_weights.get(
-                self.score_set, (0.0, 0.85, 0.15)
+                self.score_set, (0.1, 0.6, 0.3)
             )
+
 
             # Exchange client
             if not self.paper_trading:
@@ -647,8 +660,10 @@ class RotatorEngine:
         rs = ag / (al + 1e-9)
         return 100 - (100 / (1 + rs))
 
-    def _supertrend(self, df, period=10, multiplier=3.0):
+    def _supertrend(self, df):
         df = df.copy()
+        period = self.st_period
+        multiplier = self.st_mult
         df["atr_st"] = self._atr(df, period)
         hl2 = (df["high"] + df["low"]) / 2
         df["upperband"] = hl2 + multiplier * df["atr_st"]
@@ -701,11 +716,11 @@ class RotatorEngine:
         s_short = np.where(df["close"] < df["ema_200"], rsi_short / 30.0, 0.0)
         df["rsi_score"] = s_long - s_short
 
-        df = self._supertrend(df, 10, 3.0)
+        df = self._supertrend(df)
 
         df["ema_fast"]  = self._ema(df["close"], 9)
         df["ema_slow"]  = self._ema(df["close"], 21)
-        df["ema_trend"] = self._ema(df["close"], 100)
+        df["ema_trend"] = self._ema(df["close"], self.ema_trend_period)
         df["vol_avg"]   = df["volume"].rolling(20).mean()
         df["boost_vol"] = (df["volume"] / (df["vol_avg"] + 1e-9)).clip(lower=0.5, upper=3.0)
         df["spread"]    = (df["ema_fast"] - df["ema_slow"]) / (df["ema_slow"] + 1e-9)
@@ -719,6 +734,7 @@ class RotatorEngine:
         ).clip(-1.0, 1.0)
         df["atr_sl"] = self._atr(df, 14)
         return df
+
 
     # ──────────────────────────────────────────────────────────────────────
     # Market data
