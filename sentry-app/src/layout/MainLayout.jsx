@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Zap, ArrowLeftRight,
-  Activity, Settings, Shield,
+  Activity, Shield, Settings
 } from "lucide-react";
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { path: "/rotation",  icon: Activity,        label: "Rotation"  },
   { path: "/trades",    icon: ArrowLeftRight,  label: "Trades"    },
   { path: "/control",   icon: Zap,             label: "Control"   },
+  { path: "/strategy",  icon: Settings,        label: "Strategy"  },
   { path: "/exchanges", icon: Shield,          label: "Keys"      },
 ];
 
@@ -32,9 +33,10 @@ export default function MainLayout({ children }) {
               key={path}
               className={`nav-item ${active ? "active" : ""}`}
               onClick={() => navigate(path)}
+              style={{ padding: "6px 8px", minWidth: "48px" }}
             >
-              <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-              {label}
+              <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
+              <span style={{ fontSize: "9px" }}>{label}</span>
             </button>
           );
         })}
