@@ -45,8 +45,10 @@ class StrategySettings(Base):
     use_ml_filter = Column(Boolean, default=False)
     ml_prob_thr = Column(Float, default=0.55)
 
-
-
-
-
-
+    # Custom Strategy weights & settings
+    custom_w_rsi = Column(Float, default=0.10)
+    custom_w_st = Column(Float, default=0.60)
+    custom_w_mom = Column(Float, default=0.30)
+    st_period = Column(Integer, default=10)
+    st_mult = Column(Float, default=3.0)
+    ema_trend_period = Column(Integer, default=100)
