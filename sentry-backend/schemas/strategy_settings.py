@@ -24,6 +24,10 @@ class StrategySettingsPayload(BaseModel):
     use_ml_filter: bool = False
     ml_prob_thr: float = 0.55
 
-
-
-
+    # Custom weights & indicators
+    custom_w_rsi: float = 0.10
+    custom_w_st: float = 0.60
+    custom_w_mom: float = 0.30
+    st_period: int = 10
+    st_mult: float = 3.0
+    ema_trend_period: int = 100
