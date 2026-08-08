@@ -44,6 +44,7 @@ class StrategySettings(Base):
     paper_start_balance = Column(Float, default=10.0)
     use_ml_filter = Column(Boolean, default=False)
     ml_prob_thr = Column(Float, default=0.55)
+    security_pin_hash = Column(String, nullable=True)
 
     # Custom Strategy weights & settings
     custom_w_rsi = Column(Float, default=0.10)

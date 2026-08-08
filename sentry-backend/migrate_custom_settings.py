@@ -18,7 +18,8 @@ columns_to_add = [
     ("custom_w_mom", "DOUBLE PRECISION", "0.30"),
     ("st_period", "INTEGER", "10"),
     ("st_mult", "DOUBLE PRECISION", "3.0"),
-    ("ema_trend_period", "INTEGER", "100")
+    ("ema_trend_period", "INTEGER", "100"),
+    ("security_pin_hash", "VARCHAR", "NULL")
 ]
 
 with engine.connect() as conn:
