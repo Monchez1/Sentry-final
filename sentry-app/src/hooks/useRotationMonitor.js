@@ -5,16 +5,19 @@ export default function useRotationMonitor() {
   const [data, setData] = useState(null);
 
   const load = () => {
-    api.get("/rotation-monitor/")
-      .then((res) => setData(res.data))
+    Promise.all([
+      api.get("/rotation-monitor/"),
+      api.get("/signals")
+    ])
+      .then(([rotRes, sigRes]) => {
+        setData({ ...rotRes.data, signals: sigRes.data || [] });
+      })
       .catch(console.error);
   };
 
   useEffect(() => {
     load();
-
     const interval = setInterval(load, 5000);
-
     return () => clearInterval(interval);
   }, []);
 

@@ -85,9 +85,19 @@ def list_trades(
 
     trades = []
     for t in db_trades:
+        # Calculate PnL as percentage of margin for accuracy
+        margin = t.margin or 0.0
+        pnl = t.pnl or 0.0
+        pnl_pct = round((pnl / margin) * 100, 2) if margin > 0 else 0.0
+
+        # Ensure closed_at is returned with explicit UTC suffix so JS parses correctly
+        closed_at_str = None
+        if t.closed_at:
+            closed_at_str = t.closed_at.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+
         trades.append({
             "id": t.id,
-            "closed_at": str(t.closed_at),
+            "closed_at": closed_at_str,
             "symbol": t.symbol,
             "side": t.side,
             "entry_price": t.entry_price,
@@ -95,8 +105,9 @@ def list_trades(
             "reason": t.reason or "UNKNOWN",
             "score": 0.0,
             "bars_held": t.bars_held or 0,
-            "margin": t.margin or 0.0,
-            "pnl": t.pnl or 0.0,
+            "margin": margin,
+            "pnl": pnl,
+            "pnl_pct": pnl_pct,
             "balance": t.balance or 0.0,
             "status": t.status,
         })

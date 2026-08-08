@@ -1,11 +1,19 @@
 from fastapi import APIRouter, Depends
 from database.logger import log_event
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from database.deps import get_db
 from database.models.exchange import Exchange
+from database.models.strategy_settings import StrategySettings
 from schemas.exchange import ExchangeCreate, ExchangeOut
 from services.telegram_auth import get_current_tg_user, TelegramUser
+from services.security import require_pin
+from pydantic import BaseModel
+
+class ExchangeCreateSecure(ExchangeCreate):
+    """Extends ExchangeCreate with an optional security PIN field."""
+    security_pin: Optional[str] = None
 
 router = APIRouter(
     prefix="/exchanges",
@@ -21,10 +29,23 @@ def list_exchanges(
 
 @router.post("/", response_model=ExchangeOut)
 def create_exchange(
-    payload: ExchangeCreate,
+    payload: ExchangeCreateSecure,
     db: Session = Depends(get_db),
     user: TelegramUser = Depends(get_current_tg_user)
 ):
+    # ── PIN guard: only enforce if a PIN has been set ──────────────────────────
+    # New users (no PIN set) can save API keys freely during onboarding.
+    # Once a PIN is configured, it's required to modify exchange credentials.
+    settings = (
+        db.query(StrategySettings)
+        .filter(StrategySettings.telegram_id == str(user.id))
+        .first()
+    )
+    pin_hash = settings.security_pin_hash if settings else None
+    if pin_hash:
+        # PIN exists — must supply correct PIN
+        require_pin(payload.security_pin, pin_hash)
+
     # Test connection before saving unless skip_test is true
     if not payload.skip_test:
         test_res = test_exchange(payload)
@@ -205,3 +226,51 @@ def delete_exchange(
     return {"message": "Exchange deleted successfully"}
 
 
+@router.get("/balance")
+def get_exchange_balance(
+    db: Session = Depends(get_db),
+    user: TelegramUser = Depends(get_current_tg_user)
+):
+    import ccxt
+    from services.rotator_state_reader import load_rotator_snapshot
+
+    exch = db.query(Exchange).filter(
+        Exchange.telegram_id == str(user.id),
+        Exchange.active == True
+    ).first()
+
+    if not exch:
+        # No active exchange — fall back to paper balance
+        snapshot = load_rotator_snapshot()
+        paper_balance = snapshot.get("balance", 0.0) if snapshot else 0.0
+        return {"balance": paper_balance, "source": "paper", "exchange": "Paper"}
+
+    name_clean = exch.name.lower().strip().replace(" ", "").replace("-", "")
+    if name_clean == "binance":
+        name_clean = "binanceusdm"
+
+    try:
+        if not hasattr(ccxt, name_clean):
+            raise ValueError(f"Exchange '{exch.name}' not supported by CCXT")
+
+        ex_class = getattr(ccxt, name_clean)
+        ex = ex_class({
+            "apiKey": exch.api_key,
+            "secret": exch.api_secret,
+            "password": exch.passphrase,
+        })
+
+        balance_data = ex.fetch_balance()
+        usdt_balance = (
+            balance_data.get("USDT", {}).get("free", 0.0)
+            or balance_data.get("USDT", {}).get("total", 0.0)
+            or 0.0
+        )
+
+        return {"balance": float(usdt_balance), "source": "live", "exchange": exch.name}
+
+    except Exception:
+        # Live exchange failed — fall back to paper balance
+        snapshot = load_rotator_snapshot()
+        paper_balance = snapshot.get("balance", 0.0) if snapshot else 0.0
+        return {"balance": paper_balance, "source": "paper", "exchange": exch.name}

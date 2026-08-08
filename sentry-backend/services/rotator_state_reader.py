@@ -88,6 +88,7 @@ def _parse_snapshot(raw: dict, signals: Optional[list] = None) -> dict:
     start_bal = raw.get("paper_start_balance", 10.0)
     result = {
         "portfolio": {
+            "balance": round(raw.get("balance", raw.get("equity", 0)), 2),
             "equity": round(raw.get("equity", 0), 2),
             "today_pnl": round(raw.get("equity", 0) - start_bal, 2),
             "today_pnl_pct": round(((raw.get("equity", start_bal) - start_bal) / start_bal) * 100, 2),
