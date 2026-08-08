@@ -37,10 +37,15 @@ function useAnimatedValue(target, decimals = 2, durationMs = 500) {
 
 function ProgressBar({ value }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+    <div style={{ height: "6px", width: "100%", borderRadius: "99px", background: "var(--bg-input)", overflow: "hidden" }}>
       <div
-        className="h-full rounded-full bg-[#FF6B35] transition-[width] duration-700 ease-out"
-        style={{ width: `${Math.min(value || 0, 100)}%` }}
+        style={{
+          height: "100%",
+          borderRadius: "99px",
+          width: `${Math.min(value || 0, 100)}%`,
+          background: "var(--accent)",
+          transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
+        }}
       />
     </div>
   );
@@ -52,47 +57,68 @@ export default function PositionCard({ position }) {
   const positive = pnl >= 0;
 
   return (
-    <div className="rounded-[28px] bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between">
+    <div className="glass-card" style={{ padding: "20px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-          <h2 className="text-xl font-semibold">{position.symbol}</h2>
-          <p className={position.side === "LONG" ? "text-green-600 text-sm" : "text-red-500 text-sm"}>
+          <h2 style={{ fontWeight: 800, fontSize: "1.2rem", color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+            {position.symbol}
+          </h2>
+          <span style={{
+            display: "inline-block", marginTop: "6px",
+            fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.06em",
+            padding: "2px 8px", borderRadius: "99px",
+            background: position.side === "LONG" ? "hsl(142,71%,45%,0.15)" : "hsl(0,84%,60%,0.15)",
+            color: position.side === "LONG" ? "var(--success)" : "var(--danger)",
+            border: `1px solid ${position.side === "LONG" ? "hsl(142,71%,45%,0.3)" : "hsl(0,84%,60%,0.3)"}`
+          }}>
             {position.side}
-          </p>
+          </span>
         </div>
 
-        <div className="text-right tabular-nums">
-          <p className={`text-2xl font-bold transition-colors duration-300 ${positive ? "text-green-600" : "text-red-500"}`}>
+        <div style={{ textAlign: "right" }}>
+          <p style={{
+            fontWeight: 800, fontSize: "1.4rem", fontVariantNumeric: "tabular-nums",
+            color: positive ? "var(--success)" : "var(--danger)"
+          }}>
             {positive ? "+" : ""}${pnl.toFixed(4)}
           </p>
-          <p className={`text-sm transition-colors duration-300 ${positive ? "text-green-600" : "text-red-500"}`}>
+          <p style={{
+            fontSize: "0.8rem", fontWeight: 600, marginTop: "2px", fontVariantNumeric: "tabular-nums",
+            color: positive ? "var(--success)" : "var(--danger)"
+          }}>
             {positive ? "+" : ""}{pnlPct.toFixed(2)}%
           </p>
         </div>
       </div>
 
-      <div className="mt-5">
-        <div className="mb-2 flex justify-between text-sm text-zinc-500">
+      <div style={{ marginTop: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "6px", fontWeight: 600 }}>
           <span>TP Progress</span>
-          <span className="tabular-nums">{position.progress || 0}%</span>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{position.progress || 0}%</span>
         </div>
         <ProgressBar value={position.progress || 0} />
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
-        <div className="rounded-2xl bg-zinc-50 p-3">
-          <p className="text-xs text-zinc-500">Held</p>
-          <p className="font-semibold tabular-nums">{position.held_bars || 0} bars</p>
-        </div>
-        <div className="rounded-2xl bg-zinc-50 p-3">
-          <p className="text-xs text-zinc-500">Stop</p>
-          <p className="font-semibold">{position.stop || "-"}</p>
-        </div>
-        <div className="rounded-2xl bg-zinc-50 p-3">
-          <p className="text-xs text-zinc-500">Peak</p>
-          <p className="font-semibold">{position.peak || "-"}</p>
-        </div>
+      <div style={{ marginTop: "20px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px" }}>
+        {[
+          { label: "Held", value: `${position.held_bars || 0} bars` },
+          { label: "Stop", value: position.stop || "-" },
+          { label: "Peak", value: position.peak || "-" }
+        ].map(({ label, value }) => (
+          <div key={label} style={{
+            background: "var(--bg-elevated)", borderRadius: "var(--radius-sm)",
+            padding: "8px 10px", border: "1px solid var(--border)"
+          }}>
+            <p style={{ fontSize: "0.58rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              {label}
+            </p>
+            <p style={{ marginTop: "3px", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+              {value}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
+
